@@ -1,5 +1,5 @@
 from fastapi import HTTPException
-from sqlalchemy import select, delete
+from sqlalchemy import select, delete, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql.functions import func
 from starlette import status
@@ -24,6 +24,7 @@ class PostService:
             page:int=1,
             page_size:int=10,
             author_uid:str=None,
+            category_id:int=None,
             current_user_uid:str=None
             ):
         """
@@ -31,29 +32,44 @@ class PostService:
         拿到总列表数，以确定是否还有更多帖子
         如果没有指定作者的话，直接查所有帖子，并返回按创建时间排序好的帖子
         返回找到的帖子总数和查到的帖子的列表
-        """
 
-        stmt = select(Posts).order_by(Posts.created_time.desc())# 找帖子表的内容并按时间排序
+        可见性规则：
+        - 公开帖子所有人可见
+        - 私密帖子仅作者自己可见
+        """
+        stmt = select(Posts).order_by(Posts.is_top.desc(), Posts.created_time.desc())# 置顶在前，按时间排序
         skip = (page -1)*page_size
 
-        is_author = (author_uid == current_user_uid) if author_uid is not None else False  # 判断当前用户是否是作者
-
-        if author_uid is not None:
-            stmt = stmt.where(Posts.author_uid == author_uid)# 附加条件，要求帖子作者为指定作者
-            stmt_count = select(func.count()).where(Posts.author_uid == author_uid,Posts.is_public or is_author)# 拿到指定作者的帖子数
-            # 并减去私密帖子
+        # 构建可见性条件：公开帖子 或 当前用户自己的私密帖子
+        if current_user_uid:
+            visibility = or_(Posts.is_public == True, Posts.author_uid == current_user_uid)
         else:
-            stmt_count = select(func.count()).where(Posts.is_public or is_author)# 如果未指定作者，则查询所有帖子的总数
+            visibility = Posts.is_public == True
+
+        # 按作者筛选
+        if author_uid is not None:
+            stmt = stmt.where(Posts.author_uid == author_uid)
+            stmt_count = select(func.count()).where(Posts.author_uid == author_uid)
+        else:
+            stmt_count = select(func.count())
+
+        # 按板块筛选
+        if category_id is not None:
+            stmt = stmt.where(Posts.category_id == category_id)
+            stmt_count = stmt_count.where(Posts.category_id == category_id)
+
+        # 应用可见性条件
+        stmt = stmt.where(visibility)
+        stmt_count = stmt_count.where(visibility)
+
         count_result = await db.execute(stmt_count)
         total = count_result.scalar_one_or_none()
-
-        stmt = stmt.where(Posts.is_public or is_author)# 根据作者来决定是否公开所有帖子
 
         stmt = stmt.offset(skip).limit(page_size)
 
         result = await db.execute(stmt)
         post_list = result.scalars().all()
-        return total,post_list
+        return total, post_list
 
     async def crud_get_post_details_by_id(self,db:AsyncSession,post_id:int,current_user_uid:str):
         """

@@ -30,3 +30,4 @@ class User(Base):
     )
     posts: Mapped["Posts"] = relationship("Posts",back_populates="author")
     token: Mapped["Token"] = relationship("Token",back_populates="user",uselist= False)
+    comments: Mapped[list["Comments"]] = relationship("Comments", back_populates="author")

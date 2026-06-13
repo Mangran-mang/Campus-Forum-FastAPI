@@ -75,19 +75,44 @@ async def update_user(
         user_details=Depends(access_token_bearer)
 ):
     """
-    更新用户
+    更新用户（仅本人或管理员可操作）
     """
-    new_user = await user_service.crud_update_user(db,user_data.email,user_data)
+    # 检查权限：只能更新自己的信息，或管理员可以更新任何人
+    current_email = user_details["user"]["email"]
+    if current_email != user_data.email:
+        # 如果不是本人，检查是否为管理员
+        current_user = await user_service.crud_get_user_by_email(db, current_email)
+        if not current_user.is_superuser:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="无权修改其他用户的信息"
+            )
+
+    new_user = await user_service.crud_update_user(db, user_data.email, user_data)
     if new_user:
         return {"code":200,"message":"更新成功","data":new_user}
     else:
         return {"code":404,"message":"用户不存在"}
 
 @router.delete("/delete/{email}")
-async def delete_user(email:str,db:AsyncSession=Depends(get_database)):
+async def delete_user(
+        email:str,
+        db:AsyncSession=Depends(get_database),
+        user_details=Depends(access_token_bearer),
+):
     """
-    删除用户
+    删除用户（仅本人或管理员可操作）
     """
+    current_email = user_details["user"]["email"]
+    current_user = await user_service.crud_get_user_by_email(db, current_email)
+
+    # 只能删除自己，或管理员可以删除任何人
+    if current_email != email and not current_user.is_superuser:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="无权删除其他用户"
+        )
+
     result = await user_service.crud_delete_user(db,email)
     if result:
         return {"code":200,"message":"删除成功"}

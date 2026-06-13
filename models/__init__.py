@@ -3,3 +3,7 @@ from .model_user import User
 from .model_posts import Posts
 from .model_comments import Comments
 from .model_token import Token
+from .model_category import Category
+from .model_like import Like
+from .model_bookmark import Bookmark
+from .model_notification import Notification

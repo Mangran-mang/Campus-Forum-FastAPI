@@ -31,3 +31,8 @@ logs/
 # 操作系统文件
 .DS_Store
 Thumbs.db
+
+__pycache__/
+*.pyc
+.venv/
+.env

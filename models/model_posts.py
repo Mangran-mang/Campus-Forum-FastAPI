@@ -15,9 +15,17 @@ class Posts(Base):
     summary: Mapped[str] = mapped_column(String(255),nullable= True,default="无",comment="帖子摘要")
     view_count: Mapped[int] = mapped_column(Integer,default=1,comment="浏览量")
     is_public: Mapped[bool] = mapped_column(Boolean,default=True,comment="是否公开")
+    is_top: Mapped[bool] = mapped_column(Boolean,default=False,comment="是否置顶")
+    category_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey("categories.id", ondelete="SET NULL"),
+        nullable=True,
+        default=None,
+        comment="板块id"
+    )
     author_uid: Mapped[str] = mapped_column(
         String(36),
-        ForeignKey("user.uid",onupdate="CASCADE"),# 父表主键更新，子表外键跟着更新),
+        ForeignKey("user.uid",onupdate="CASCADE"),
         nullable= False,
         comment="作者id"
     )
@@ -28,3 +36,4 @@ class Posts(Base):
         comment="更新时间"
     )
     author:Mapped["User"] = relationship("User",back_populates="posts")
+    category: Mapped["Category"] = relationship("Category", back_populates="posts")

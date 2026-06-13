@@ -1,7 +1,8 @@
+from typing import Optional
+
 from pydantic import BaseModel
 
 
 class CommentsCreateModel(BaseModel):
     content: str
-    # comment_user_uid: str
-    # post_id: int
+    parent_id: Optional[int] = None  # 楼中楼回复时指定父评论id

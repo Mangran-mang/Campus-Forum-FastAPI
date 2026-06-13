@@ -19,8 +19,8 @@ class UserUpdateModel(BaseModel):
     nickname: str = None
     avatar_url: str = None
     gender: str = None
-    is_active: str = True
-    is_superuser: str = False
+    is_active: Optional[bool] = True
+    is_superuser: Optional[bool] = False
 
 class UserLoginModel(BaseModel):
     email: str

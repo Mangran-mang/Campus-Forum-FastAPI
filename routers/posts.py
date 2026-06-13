@@ -20,9 +20,9 @@ async def add_new_post(
         user_details = Depends(access_token_bearer)
 ):
     """
-    添加帖子
+    添加帖子（作者 uid 由 token 自动填充）
     """
-    # 注意：这个路由和crud函数都没有写当前用户是否为对应uid的用户
+    post_data.author_uid = user_details["user"]["user_uid"]
     post = await postservice.crud_add_new_post(db,post_data)
     return {"code":200,"message":"添加成功","data":post}
 
@@ -32,11 +32,13 @@ async def get_posts_list(
         page:int=Query(default=1,alias="page",description="页码",ge=1),
         page_size:int=Query(default=10,alias="page_size",description="每页数量",ge=1),
         author_uid:str=None,
+        category_id:int=None,
         user_details = Depends(access_token_bearer)# 1是强制要求登录2是拿到用户详情
 ):
     """
     获取帖子列表
     author_uid：指定要查的作者的uid
+    category_id：指定板块id
     user_details：解码后的token详情，里面有email和uid
     """
     total,post_list = await postservice.crud_get_posts_list(
@@ -44,6 +46,7 @@ async def get_posts_list(
         page,
         page_size,
         author_uid,
+        category_id,
         user_details["user"]["user_uid"]
     )
     has_more = total > page * page_size# 暂未用到
