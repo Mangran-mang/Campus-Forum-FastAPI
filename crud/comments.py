@@ -67,7 +67,10 @@ class CommentsService:
         stmt = (
             select(Comments)
             .where(Comments.post_id == post_id, Comments.parent_id.is_(None))
-            .options(selectinload(Comments.replies))  # 预加载子回复
+            .options(
+                selectinload(Comments.author),
+                selectinload(Comments.replies).selectinload(Comments.author),  # 子回复也加载作者
+            )
             .order_by(Comments.created_time.desc())
             .offset(offset)
             .limit(page_size)

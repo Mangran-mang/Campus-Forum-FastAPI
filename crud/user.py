@@ -60,8 +60,11 @@ class UserService:
         检验目标用户是否存在于数据库中
         并返回True或False
         """
-        user = await self.crud_get_user_by_email(db, email)
-        return True if user else False
+        try:
+            user = await self.crud_get_user_by_email(db, email)
+            return True if user else False
+        except UserException:
+            return False
 
 
     async def crud_update_user(

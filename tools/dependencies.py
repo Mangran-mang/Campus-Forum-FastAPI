@@ -128,6 +128,10 @@ class UserChecker:
         self.is_allow = is_allow
 
     def __call__(self,user:User = Depends(get_user_by_token)):
+        # 如果 is_allow=False，允许所有登录用户
+        if not self.is_allow:
+            return True
+        # 如果 is_allow=True，只允许管理员
         if user.is_superuser:
             return True
         else:

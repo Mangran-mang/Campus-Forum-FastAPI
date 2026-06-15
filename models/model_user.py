@@ -17,7 +17,7 @@ class User(Base):
     password: Mapped[str] = mapped_column(String(255),nullable= False,comment="用户密码")
     username: Mapped[Optional[str]] = mapped_column(String(50),nullable= True,comment="用户名")
     nickname: Mapped[Optional[str]] = mapped_column(String(50),nullable= True,default="无",comment="昵称")
-    avatar_url: Mapped[Optional[str]] = mapped_column(String(255),nullable= True,default="",comment="头像")
+    # avatar_url: Mapped[Optional[str]] = mapped_column(String(255),nullable= True,default="",comment="头像")
     gender: Mapped[str] = mapped_column(Enum('男','女','未知'),nullable= False,comment="性别",default='未知')
     is_active: Mapped[bool] = mapped_column(default=True,comment="是否激活")
     is_superuser: Mapped[bool] = mapped_column(default=False,comment="是否是管理员")

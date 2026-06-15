@@ -1,6 +1,7 @@
 from fastapi import HTTPException
 from sqlalchemy import select, delete, or_
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 from sqlalchemy.sql.functions import func
 from starlette import status
 
@@ -16,6 +17,8 @@ class PostService:
         db.add(orm_post)
         await db.commit()
         await db.refresh(orm_post)
+        # 加载关联的作者信息
+        await db.refresh(orm_post, ["author"])
         return orm_post
 
     async def crud_get_posts_list(
@@ -37,7 +40,10 @@ class PostService:
         - 公开帖子所有人可见
         - 私密帖子仅作者自己可见
         """
-        stmt = select(Posts).order_by(Posts.is_top.desc(), Posts.created_time.desc())# 置顶在前，按时间排序
+        stmt = select(Posts).options(
+            selectinload(Posts.author),
+            selectinload(Posts.category)
+        ).order_by(Posts.is_top.desc(), Posts.created_time.desc())  # 置顶在前，按时间排序
         skip = (page -1)*page_size
 
         # 构建可见性条件：公开帖子 或 当前用户自己的私密帖子
@@ -77,7 +83,10 @@ class PostService:
         根据帖子是否隐藏与当前用户是否是作者来决定是否显示
         返回的是一个ORM模型
         """
-        stmt = select(Posts).where(Posts.id == post_id)
+        stmt = select(Posts).options(
+            selectinload(Posts.author),
+            selectinload(Posts.category)
+        ).where(Posts.id == post_id)
         result = await db.execute(stmt)
         post_detail = result.scalar_one_or_none()
         # 先检查有没有这个帖子

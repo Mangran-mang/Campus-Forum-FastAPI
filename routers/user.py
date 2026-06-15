@@ -26,10 +26,9 @@ user_checker = UserChecker(True)
 @router.get("/current_user")
 async def get_current_user(
         user=Depends(get_user_by_token),
-        user_check: bool = Depends(user_checker)
     ):
     """
-    获取当前用户
+    获取当前用户（需登录）
     """
     return {"code":200,"message":"获取成功","data":user}
 
