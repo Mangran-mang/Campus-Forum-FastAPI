@@ -222,12 +222,14 @@ onMounted(() => {
 <style scoped>
 .meta {
   display: flex;
-  gap: 16px;
+  flex-wrap: wrap;
+  gap: 12px;
   font-size: 13px;
   color: var(--text-secondary);
 }
 .actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   border-top: 1px solid var(--border);
   padding-top: 12px;
@@ -245,6 +247,7 @@ onMounted(() => {
 }
 .comment-header {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   font-size: 13px;
   margin-bottom: 6px;
@@ -259,6 +262,7 @@ onMounted(() => {
   margin-bottom: 8px;
   white-space: pre-wrap;
   line-height: 1.6;
+  word-break: break-word;
 }
 .replies {
   margin-left: 24px;
@@ -275,5 +279,24 @@ onMounted(() => {
   align-items: center;
   gap: 16px;
   margin-top: 16px;
+}
+
+@media (max-width: 768px) {
+  .meta {
+    font-size: 12px;
+    gap: 8px;
+  }
+  .actions {
+    gap: 6px;
+    padding-top: 10px;
+  }
+  .replies {
+    margin-left: 12px;
+    padding-left: 10px;
+  }
+  .pagination {
+    gap: 10px;
+    margin-top: 12px;
+  }
 }
 </style>

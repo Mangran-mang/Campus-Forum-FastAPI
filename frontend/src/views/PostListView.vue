@@ -86,4 +86,16 @@ onMounted(() => {
   gap: 16px;
   margin-top: 24px;
 }
+
+@media (max-width: 768px) {
+  .category-select {
+    min-width: 100px;
+    font-size: 12px;
+    padding: 5px 8px;
+  }
+  .pagination {
+    gap: 10px;
+    margin-top: 16px;
+  }
+}
 </style>

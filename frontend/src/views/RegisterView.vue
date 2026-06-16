@@ -84,4 +84,17 @@ async function handleRegister() {
   color: var(--text-secondary);
   margin-bottom: 4px;
 }
+
+@media (max-width: 768px) {
+  .auth-page {
+    padding-top: 20px;
+  }
+  .auth-card {
+    max-width: 100%;
+  }
+  .auth-card h2 {
+    font-size: 20px;
+    margin-bottom: 20px;
+  }
+}
 </style>

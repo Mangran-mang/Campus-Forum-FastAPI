@@ -194,4 +194,15 @@ onMounted(() => {
   color: var(--text-secondary);
   margin-bottom: 4px;
 }
+
+@media (max-width: 768px) {
+  .info-row {
+    flex-direction: column;
+    margin-bottom: 12px;
+  }
+  .info-row label {
+    width: auto;
+    margin-bottom: 2px;
+  }
+}
 </style>

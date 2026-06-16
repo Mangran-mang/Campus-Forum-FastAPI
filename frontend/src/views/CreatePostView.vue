@@ -96,4 +96,10 @@ onMounted(async () => {
 textarea {
   min-height: 200px;
 }
+
+@media (max-width: 768px) {
+  textarea {
+    min-height: 150px;
+  }
+}
 </style>

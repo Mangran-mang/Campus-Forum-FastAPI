@@ -103,8 +103,10 @@ onMounted(() => loadNotifs(1))
 }
 .notif-header {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   margin-bottom: 4px;
+  gap: 6px;
 }
 .notif-type {
   font-size: 12px;
@@ -120,6 +122,7 @@ onMounted(() => loadNotifs(1))
 .notif-content {
   font-size: 14px;
   line-height: 1.5;
+  word-break: break-word;
 }
 .unread-dot {
   position: absolute;
@@ -136,5 +139,16 @@ onMounted(() => loadNotifs(1))
   align-items: center;
   gap: 16px;
   margin-top: 24px;
+}
+
+@media (max-width: 768px) {
+  .unread-dot {
+    top: 10px;
+    right: 10px;
+  }
+  .pagination {
+    gap: 10px;
+    margin-top: 16px;
+  }
 }
 </style>

@@ -42,10 +42,12 @@ function formatTime(t) {
 }
 .post-header {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   font-size: 13px;
   color: var(--text-secondary);
   margin-bottom: 8px;
+  gap: 4px;
 }
 .post-title {
   font-size: 16px;
@@ -58,10 +60,12 @@ function formatTime(t) {
   color: var(--text-secondary);
   line-height: 1.5;
   margin-bottom: 12px;
+  word-break: break-word;
 }
 .post-meta {
   display: flex;
-  gap: 16px;
+  flex-wrap: wrap;
+  gap: 12px;
   font-size: 12px;
   color: var(--text-muted);
 }
@@ -71,5 +75,17 @@ function formatTime(t) {
   padding: 2px 8px;
   border-radius: 4px;
   font-size: 12px;
+}
+
+@media (max-width: 768px) {
+  .post-title {
+    font-size: 15px;
+  }
+  .post-summary {
+    font-size: 13px;
+  }
+  .post-meta {
+    gap: 8px;
+  }
 }
 </style>
