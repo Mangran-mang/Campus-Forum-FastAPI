@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div class="content-enter">
     <h2 style="font-size:20px;margin-bottom:16px">发布新帖</h2>
     <div class="card">
       <form @submit.prevent="handleSubmit">

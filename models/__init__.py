@@ -7,3 +7,10 @@ from .model_category import Category
 from .model_like import Like
 from .model_bookmark import Bookmark
 from .model_notification import Notification
+from .model_goods import Goods
+from .model_goods_classify import GoodsClassify
+from .model_goods_comment import GoodsComment
+from .model_image import Image
+from .model_level_config import LevelConfig
+from .model_conversation import Conversation
+from .model_message import Message

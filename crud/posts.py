@@ -1,10 +1,13 @@
+from datetime import datetime
+
 from fastapi import HTTPException
-from sqlalchemy import select, delete, or_
+from sqlalchemy import select, or_, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from sqlalchemy.sql.functions import func
 from starlette import status
 
+from crud.user import UserService
 from models import User
 from models.model_posts import Posts
 from schemas.posts import PostsCreateModel, PostsUpdateModel
@@ -15,9 +18,13 @@ class PostService:
     async def crud_add_new_post(self,db:AsyncSession,post:PostsCreateModel):
         orm_post = Posts(**post.model_dump())
         db.add(orm_post)
+        await db.flush()  # 先落库拿到 id，但暂不提交
+        # 发帖奖励：作者经验 +3，并重新计算等级（与发帖同一事务）
+        user_service = UserService()
+        await user_service.crud_add_experience(db, orm_post.author_uid, 3)
         await db.commit()
         await db.refresh(orm_post)
-        # 加载关联的作者信息
+        # 加载关联的作者信息（已包含最新经验/等级）
         await db.refresh(orm_post, ["author"])
         return orm_post
 
@@ -77,11 +84,11 @@ class PostService:
         post_list = result.scalars().all()
         return total, post_list
 
-    async def crud_get_post_details_by_id(self,db:AsyncSession,post_id:int,current_user_uid:str):
+    async def crud_get_post_details_by_id(self,db:AsyncSession,post_id:int,current_user_uid:str,is_superuser:bool=False):
         """
         通过id找到具体帖子
-        根据帖子是否隐藏与当前用户是否是作者来决定是否显示
-        返回的是一个ORM模型
+        根据帖子是否隐藏与当前用户是否是作者/管理员来决定是否显示
+        返回的是一个帖子ORM模型
         """
         stmt = select(Posts).options(
             selectinload(Posts.author),
@@ -93,7 +100,7 @@ class PostService:
         if not post_detail:
             raise PostException("帖子异常","不存在当前查找的帖子")
 
-        if post_detail.is_public or post_detail.author_uid == current_user_uid:
+        if is_superuser or post_detail.is_public or post_detail.author_uid == current_user_uid:
             return post_detail
         else:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,detail="无权限查看此帖子")
@@ -107,7 +114,7 @@ class PostService:
         """
         与删除业务类似
         """
-        orm_post = await self.crud_get_post_details_by_id(db,post_id,user.uid)
+        orm_post = await self.crud_get_post_details_by_id(db,post_id,user.uid,is_superuser=user.is_superuser)
         if orm_post is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail="帖子不存在")
 
@@ -117,6 +124,9 @@ class PostService:
         update_data = post.model_dump(exclude_unset= True)
         for key,value in update_data.items():
             setattr(orm_post,key,value)
+
+        # 手动记录编辑时间（模型已移除 onupdate，避免浏览行为污染该字段）
+        orm_post.updated_time = datetime.now()
 
         await db.commit()
         await db.refresh(orm_post)
@@ -134,7 +144,7 @@ class PostService:
         通过token拿用户
         然后再把User传进来拿uid
         """
-        orm_post = await self.crud_get_post_details_by_id(db,post_id,user.uid)
+        orm_post = await self.crud_get_post_details_by_id(db,post_id,user.uid,is_superuser=user.is_superuser)
         if orm_post is None:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -144,7 +154,6 @@ class PostService:
         if orm_post.author_uid != user.uid and not user.is_superuser:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,detail="无权限删除此帖子")
 
-        stmt = delete(Posts).where(Posts.id == post_id)
-        result = await db.execute(stmt)
+        await db.delete(orm_post)
         await db.commit()
-        return result.rowcount >0
+        return True

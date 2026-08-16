@@ -1,14 +1,18 @@
 from fastapi import APIRouter, Depends, Query
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from config.database_config import get_database
 from crud.comments import CommentsService
+from crud.notification import NotificationService
+from models.model_posts import Posts
 from schemas.comments import CommentsCreateModel
 from tools.dependencies import AccessTokenBearer,get_user_by_token
 
 router = APIRouter(prefix="/api/comments",tags=["评论管理"])
 
 commentsservice = CommentsService()
+notificationservice = NotificationService()
 access_token_bearer = AccessTokenBearer()
 
 @router.post("/addcomment")
@@ -19,14 +23,43 @@ async def add_new_comment(
         user_details = Depends(access_token_bearer)
 ):
     """
-    添加评论
+    添加评论（含通知触发）
     """
+    commenter_uid = user_details["user"]["user_uid"]
     comment = await commentsservice.crud_add_new_comment_into_post(
         db,
         comment_data,
         post_id,
-        user_details["user"]["user_uid"]
+        commenter_uid
     )
+
+    # 查询帖子作者
+    stmt = select(Posts).where(Posts.id == post_id)
+    result = await db.execute(stmt)
+    post = result.scalar_one_or_none()
+
+    if post and post.author_uid != commenter_uid:
+        if comment_data.parent_id is not None:
+            # 楼中楼回复：通知父评论作者
+            parent_comment = await commentsservice.crud_get_comment_by_comment_id(db, comment_data.parent_id)
+            if parent_comment and parent_comment.author_uid != commenter_uid:
+                await notificationservice.crud_add_notification(db, {
+                    "recipient_uid": parent_comment.author_uid,
+                    "sender_uid": commenter_uid,
+                    "notif_type": "reply",
+                    "post_id": post_id,
+                    "content": "有人回复了你的评论"
+                })
+        else:
+            # 一级评论：通知帖子作者
+            await notificationservice.crud_add_notification(db, {
+                "recipient_uid": post.author_uid,
+                "sender_uid": commenter_uid,
+                "notif_type": "reply",
+                "post_id": post_id,
+                "content": "有人评论了你的帖子"
+            })
+
     return {"code":200,"message":"添加成功","data":comment}
 
 @router.get("/getcomments")

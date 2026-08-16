@@ -11,13 +11,28 @@
       </div>
     </div>
 
-    <div v-if="loading" class="loading">加载中...</div>
+    <div v-if="loading" class="skeleton-list">
+      <div class="skeleton-card" v-for="i in 3" :key="i">
+        <div class="skeleton-meta">
+          <div class="skeleton skeleton-avatar"></div>
+          <div>
+            <div class="skeleton skeleton-text" style="width:60px"></div>
+            <div class="skeleton skeleton-text" style="width:40px;height:10px"></div>
+          </div>
+        </div>
+        <div class="skeleton skeleton-title"></div>
+        <div class="skeleton skeleton-text"></div>
+        <div class="skeleton skeleton-text"></div>
+      </div>
+    </div>
     <div v-else-if="posts.length === 0" class="empty-state">
       <p>暂无帖子</p>
       <p style="font-size:13px;margin-top:8px">还没有人发帖，快来抢沙发吧</p>
     </div>
     <template v-else>
-      <PostCard v-for="post in posts" :key="post.id" :post="post" />
+      <div class="post-list">
+        <PostCard v-for="post in posts" :key="post.id" :post="post" class="stagger-item" />
+      </div>
 
       <div class="pagination">
         <button class="btn-outline btn-sm" :disabled="page <= 1" @click="loadPosts(page - 1)">上一页</button>
@@ -85,6 +100,14 @@ onMounted(() => {
   align-items: center;
   gap: 16px;
   margin-top: 24px;
+}
+.skeleton-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.post-list {
+  animation: fadeIn 0.3s ease-out;
 }
 
 @media (max-width: 768px) {

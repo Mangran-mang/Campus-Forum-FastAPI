@@ -1,9 +1,10 @@
 from typing import Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr
+
 
 class UserCreateModel(BaseModel):
-    email:str
+    email:EmailStr
     password:str
     username: Optional[str] = None
     nickname: Optional[str] = None
@@ -13,7 +14,7 @@ class UserCreateModel(BaseModel):
     is_superuser: Optional[bool] = False
 
 class UserUpdateModel(BaseModel):
-    email: str
+    email: EmailStr
     password: str = None
     username: str = None
     nickname: str = None
@@ -23,5 +24,5 @@ class UserUpdateModel(BaseModel):
     is_superuser: Optional[bool] = False
 
 class UserLoginModel(BaseModel):
-    email: str
+    email: EmailStr
     password: str

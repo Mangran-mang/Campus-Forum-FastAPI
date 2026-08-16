@@ -25,6 +25,15 @@ class NotificationService:
         await db.refresh(orm_notif)
         return orm_notif
 
+    async def crud_add_notifications(
+            self, db: AsyncSession, notif_list: list[dict]
+            ):
+        """批量新增通知（一次事务）"""
+        orm_list = [Notification(**data) for data in notif_list]
+        db.add_all(orm_list)
+        await db.commit()
+        return orm_list
+
     async def crud_get_user_notifications(
             self,
             db: AsyncSession,

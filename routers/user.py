@@ -167,7 +167,8 @@ async def login_user(login_data:UserLoginModel,db:AsyncSession=Depends(get_datab
                     "refresh_token":refresh_token,
                     "user":{
                         "email":user.email,
-                        "uid":str(user.uid)
+                        "uid":str(user.uid),
+                        "is_superuser":user.is_superuser,
                     }
                 }
             )
@@ -217,13 +218,29 @@ async def refresh_token(
 
 @router.get("/logout")
 async def logout_user(
-        token_data: dict=Depends(access_token_bearer)
+        token_data: dict=Depends(access_token_bearer),
+        db: AsyncSession = Depends(get_database)
 ):
     """
     登出用户
     拿到token中的jti并将其拉黑
     """
-    await add_jti_to_blocklist(token_data["jti"])
+
+    # 拿到现在的时间，用来计算token的理论剩余过期时间
+    now_ts = int(datetime.now().timestamp())
+    await add_jti_to_blocklist(token_data["jti"],expiry=token_data["exp"]-now_ts)
+
+    # ② 从数据库找出该用户的 refresh token，拉黑它的 jti 并删除记录
+    orm_token = await token_service.crud_get_token_by_user_uid(db, token_data[
+        "user"]["user_uid"]
+                                                               )
+    if orm_token:
+        refresh_data = security.decode_token(orm_token.refresh_token)
+        if refresh_data and refresh_data.get("jti"):
+            await add_jti_to_blocklist(refresh_data["jti"], expiry=refresh_data["exp"] - now_ts)
+        await db.delete(orm_token)
+        await db.commit()
+
     return JSONResponse(
         content={
             "message":"登出成功"

@@ -105,6 +105,7 @@ export const postApi = {
   create: (data) => request('/posts/add_post', { method: 'POST', body: JSON.stringify(data) }),
   update: (id, data) => request(`/posts/update_post?post_id=${id}`, { method: 'POST', body: JSON.stringify(data) }),
   delete: (id) => request(`/posts/delete_post/${id}`, { method: 'DELETE' }),
+  report: (id) => request(`/posts/report/${id}`, { method: 'POST' }),
 }
 
 // ============== 评论相关 ==============
@@ -140,6 +141,62 @@ export const bookmarkApi = {
   getMy: () => request('/bookmarks/my'),
 }
 
+// ============== 商品相关 ==============
+export const goodsApi = {
+  getList: () => request('/goods/get_goods'),
+  getDetail: (gid) => request(`/goods/get_goods/${gid}`),
+  create: (data) => request('/goods/add_goods', { method: 'POST', body: JSON.stringify(data) }),
+  update: (gid, data) => request(`/goods/${gid}`, { method: 'PUT', body: JSON.stringify(data) }),
+  delete: (gid) => request(`/goods/${gid}`, { method: 'DELETE' }),
+}
+
+// ============== 商品分类相关 ==============
+export const classifyApi = {
+  getAll: () => request('/classify/get_classify'),
+  getById: (id) => request(`/classify/get_classify/${id}`),
+}
+
+// ============== 商品评论相关 ==============
+export const goodsCommentApi = {
+  getList: (goodsGid, params = {}) => request(`/goods/${goodsGid}/comments?page=${params.page || 1}&page_size=${params.page_size || 10}`),
+  add: (goodsGid, data) => request(`/goods/${goodsGid}/comments`, { method: 'POST', body: JSON.stringify(data) }),
+  delete: (commentId) => request(`/goods/comments/${commentId}`, { method: 'DELETE' }),
+}
+
+// ============== 图片相关 ==============
+async function uploadFile(path, file) {
+  const token = getToken()
+  const formData = new FormData()
+  formData.append('file', file)
+  const res = await fetch(`${BASE}${path}`, {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${token}` },
+    body: formData,
+  })
+  if (res.status === 403 && getRefreshToken()) {
+    const refreshOk = await tryRefresh()
+    if (refreshOk) {
+      const res2 = await fetch(`${BASE}${path}`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${getToken()}` },
+        body: formData,
+      })
+      return res2.json()
+    } else {
+      clearAuth()
+      window.location.hash = '#/login'
+      throw new Error('登录已过期')
+    }
+  }
+  return res.json()
+}
+
+export const imageApi = {
+  upload: (targetType, targetId, file) => uploadFile(`/upload/${targetType}/${targetId}`, file),
+  getList: (targetType, targetId) => request(`/images/${targetType}/${targetId}`),
+  delete: (imageId) => request(`/images/${imageId}`, { method: 'DELETE' }),
+}
+
 // ============== 通知相关 ==============
 export const notificationApi = {
   getList: (params = {}) => {
@@ -149,4 +206,29 @@ export const notificationApi = {
   getUnreadCount: () => request('/notifications/unread_count'),
   markRead: (id) => request(`/notifications/read/${id}`, { method: 'POST' }),
   markAllRead: () => request('/notifications/read_all', { method: 'POST' }),
+}
+
+// ============== 私信相关 ==============
+export const messageApi = {
+  // 获取或创建与某用户的会话
+  getOrCreateConversation: (otherUid) =>
+    request(`/messages/conversation?other_uid=${otherUid}`, { method: 'POST' }),
+  // 我的会话列表
+  getConversations: (params = {}) => {
+    const qs = new URLSearchParams(params)
+    return request(`/messages/conversations?${qs}`)
+  },
+  // 会话历史消息
+  getMessages: (convId, params = {}) => {
+    const qs = new URLSearchParams({ page: params.page || 1, page_size: params.page_size || 50 })
+    return request(`/messages/conversations/${convId}/messages?${qs}`)
+  },
+  // 发送消息
+  sendMessage: (convId, content) =>
+    request(`/messages/conversations/${convId}/messages`, {
+      method: 'POST',
+      body: JSON.stringify({ content }),
+    }),
+  // 搜索用户
+  searchUsers: (keyword) => request(`/messages/users/search?keyword=${encodeURIComponent(keyword)}`),
 }

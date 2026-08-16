@@ -5,13 +5,21 @@
       <button class="btn-outline btn-sm" @click="markAllRead" v-if="hasUnread">全部标记已读</button>
     </div>
 
-    <div v-if="loading" class="loading">加载中...</div>
+    <div v-if="loading" class="skeleton-list">
+      <div class="skeleton-card" v-for="i in 3" :key="i">
+        <div class="skeleton-meta">
+          <div class="skeleton skeleton-text" style="width:60px"></div>
+          <div class="skeleton skeleton-text" style="width:100px"></div>
+        </div>
+        <div class="skeleton skeleton-text"></div>
+      </div>
+    </div>
     <div v-else-if="notifications.length === 0" class="empty-state"><p>暂无通知</p></div>
     <div v-else>
       <div
         v-for="notif in notifications"
         :key="notif.id"
-        class="notif-item card"
+        class="notif-item card stagger-item"
         :class="{ unread: !notif.is_read }"
         @click="handleClick(notif)"
       >
@@ -45,7 +53,7 @@ const hasMore = ref(false)
 const hasUnread = ref(false)
 
 function notifTypeLabel(type) {
-  const map = { reply: '回复', like: '点赞', system: '系统通知' }
+  const map = { reply: '回复', like: '点赞', system: '系统通知', report: '举报' }
   return map[type] || type
 }
 
@@ -93,13 +101,31 @@ onMounted(() => loadNotifs(1))
 </script>
 
 <style scoped>
+.skeleton-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.skeleton-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.skeleton-meta .skeleton-text { width: 80px; margin-bottom: 0; }
 .notif-item {
   margin-bottom: 8px;
   cursor: pointer;
   position: relative;
+  transition: box-shadow 0.25s ease, transform 0.25s ease, border-color 0.25s ease;
+}
+.notif-item:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
 }
 .notif-item.unread {
   border-left: 3px solid var(--primary);
+  background: #fafbff;
 }
 .notif-header {
   display: flex;

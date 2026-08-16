@@ -36,3 +36,14 @@ __pycache__/
 *.pyc
 .venv/
 .env
+
+# Agent 本地记忆与配置（不上传）
+.workbuddy/
+.codebuddy/
+
+# 图床与构建产物（不上传）
+uploads/
+frontend/dist_old/
+frontend/dist_tmp/
+frontend/dist_tmp2/
+*.bak

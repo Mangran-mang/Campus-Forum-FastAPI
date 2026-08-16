@@ -1,8 +1,10 @@
-from fastapi import FastAPI
+from alembic.util import status
+from fastapi import FastAPI,status
 from fastapi.requests import Request
 import time
 from starlette.middleware.cors import CORSMiddleware
-
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 def register_middleware(app: FastAPI):
     """
@@ -17,7 +19,7 @@ def register_middleware(app: FastAPI):
         # 执行完会拿到接口返回的 response
         response = await call_next(request)
         message = f"{request.client.host} {request.method} {request.url.path} {response.status_code}"
-        print(message)
+        # print(message)
         return  response
 
     app.add_middleware(  # 设置app可被跨域访问
@@ -27,3 +29,17 @@ def register_middleware(app: FastAPI):
         allow_methods=["*"],  # 允许所有请求方法
         allow_headers=["*"],  # 允许所有请求头
     )
+
+    # @app.middleware("http")
+    # async def authorization(request:Request,call_next):
+    #     if not "Authorization" in request.headers:
+    #         return JSONResponse(
+    #             content={
+    #                 "信息":"未通过认证",
+    #                 "提示":"请提供正确的令牌"
+    #             },
+    #             status_code = status.HTTP_401_UNAUTHORIZED
+    #         )
+    #     response = await call_next(request)
+    #     return response
+

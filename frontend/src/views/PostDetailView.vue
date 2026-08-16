@@ -1,24 +1,42 @@
 <template>
-  <div v-if="loading" class="loading">加载中...</div>
+  <div v-if="loading" class="skeleton-list">
+    <div class="skeleton-card">
+      <div class="skeleton skeleton-title" style="width:75%"></div>
+      <div class="skeleton-meta">
+        <div class="skeleton skeleton-text" style="width:80px"></div>
+        <div class="skeleton skeleton-text" style="width:100px"></div>
+      </div>
+      <div class="skeleton skeleton-text"></div>
+      <div class="skeleton skeleton-text"></div>
+      <div class="skeleton skeleton-text"></div>
+      <div class="skeleton skeleton-text"></div>
+    </div>
+  </div>
   <div v-else-if="!post" class="empty-state"><p>帖子不存在</p></div>
   <div v-else>
     <!-- 帖子详情 -->
     <article class="card">
       <h1 style="font-size:22px;margin-bottom:8px">{{ post.title }}</h1>
       <div class="meta">
-        <span>作者：{{ post.author?.nickname || post.author?.username || '匿名' }}</span>
+        <span>作者：{{ post.author?.nickname || post.author?.username || '匿名' }}
+          <span v-if="post.author" class="lv-badge">Lv.{{ post.author.level }}</span>
+          <span v-if="post.author?.is_superuser" class="admin-badge">管理员</span>
+        </span>
         <span>{{ formatTime(post.created_time) }}</span>
-        <span v-if="post.updated_time !== post.created_time">（编辑于 {{ formatTime(post.updated_time) }}）</span>
       </div>
       <div class="content" style="margin:16px 0;white-space:pre-wrap;line-height:1.8">{{ post.content }}</div>
+
       <div class="actions">
-        <button class="btn-outline btn-sm" @click="toggleLike" :class="{ liked: isLiked }">
+        <button class="btn-outline btn-sm" @click="toggleLike" :class="{ liked: isLiked, 'like-pop': likeAnimating }">
           {{ isLiked ? '已赞' : '点赞' }} ({{ likeCount }})
         </button>
-        <button class="btn-outline btn-sm" @click="toggleBookmark" :class="{ bookmarked: isBookmarked }">
+        <button class="btn-outline btn-sm" @click="toggleBookmark" :class="{ bookmarked: isBookmarked, 'like-pop': bookmarkAnimating }">
           {{ isBookmarked ? '已收藏' : '收藏' }}
         </button>
         <button v-if="isAuthor" class="btn-danger btn-sm" @click="handleDelete">删除</button>
+        <button v-if="canReport" class="btn-outline btn-sm report-action-btn" @click="handleReport" :disabled="reporting">
+          {{ reporting ? 'AI 审核中...' : '举报' }}
+        </button>
       </div>
     </article>
 
@@ -38,7 +56,10 @@
       <div v-else>
         <div v-for="comment in comments" :key="comment.id" class="comment-item card">
           <div class="comment-header">
-            <strong>{{ comment.author?.nickname || comment.author?.username || '匿名' }}</strong>
+            <strong>{{ comment.author?.nickname || comment.author?.username || '匿名' }}
+              <span v-if="comment.author" class="lv-badge">Lv.{{ comment.author.level }}</span>
+              <span v-if="comment.author?.is_superuser" class="admin-badge">管理员</span>
+            </strong>
             <span class="comment-time">{{ formatTime(comment.created_time) }}</span>
           </div>
           <div class="comment-content">{{ comment.content }}</div>
@@ -57,7 +78,10 @@
           <div v-if="comment.replies && comment.replies.length > 0" class="replies">
             <div v-for="reply in comment.replies" :key="reply.id" class="reply-item">
               <div class="comment-header">
-                <strong>{{ reply.author?.nickname || reply.author?.username || '匿名' }}</strong>
+                <strong>{{ reply.author?.nickname || reply.author?.username || '匿名' }}
+                  <span v-if="reply.author" class="lv-badge">Lv.{{ reply.author.level }}</span>
+                  <span v-if="reply.author?.is_superuser" class="admin-badge">管理员</span>
+                </strong>
                 <span class="comment-time">{{ formatTime(reply.created_time) }}</span>
               </div>
               <div class="comment-content">{{ reply.content }}</div>
@@ -75,12 +99,13 @@
       </div>
     </div>
   </div>
+
 </template>
 
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { postApi, commentApi, likeApi, bookmarkApi } from '../api/index.js'
+import { postApi, commentApi, likeApi, bookmarkApi, userApi } from '../api/index.js'
 
 const route = useRoute()
 const router = useRouter()
@@ -93,7 +118,25 @@ const likeCount = ref(0)
 const isBookmarked = ref(false)
 const isLoggedIn = ref(!!localStorage.getItem('access_token'))
 const currentUser = ref(JSON.parse(localStorage.getItem('user_info') || '{}'))
-const isAuthor = computed(() => currentUser.value?.uid === post.value?.author_uid)
+// 本人或管理员 → 显示删除；uid 统一转字符串比较，避免数字/字符串类型误判
+const isAuthor = computed(() =>
+  String(currentUser.value?.uid ?? '') === String(post.value?.author_uid ?? '') || !!currentUser.value?.is_superuser
+)
+
+// 举报权限：已登录、非作者、非管理员 → 显示举报按钮（召唤 AI 审核）
+const canReport = computed(() => {
+  if (!isLoggedIn.value) return false
+  if (currentUser.value?.is_superuser) return false
+  if (String(currentUser.value?.uid ?? '') === String(post.value?.author_uid ?? '')) return false
+  return true
+})
+
+// AI 审核状态
+const reporting = ref(false)
+
+// 动画状态
+const likeAnimating = ref(false)
+const bookmarkAnimating = ref(false)
 
 // 评论
 const comments = ref([])
@@ -110,7 +153,7 @@ function formatTime(t) {
 }
 
 function canDeleteComment(comment) {
-  return currentUser.value?.uid === comment.author_uid
+  return currentUser.value?.uid === comment.author_uid || currentUser.value?.is_superuser
 }
 
 async function loadPost() {
@@ -124,14 +167,16 @@ async function loadPost() {
 }
 
 async function loadLikeStatus() {
+  // 点赞数：公开信息，不管是否登录都加载
+  try {
+    const countRes = await likeApi.count(postId.value)
+    if (countRes.code === 200) likeCount.value = countRes.data.count
+  } catch {}
+  // 当前用户的点赞状态：仅登录后查询
   if (!isLoggedIn.value) return
   try {
-    const [likeRes, bookmarkRes] = await Promise.all([
-      likeApi.check(postId.value),
-      likeApi.count(postId.value),
-    ])
-    if (likeRes.code === 200) isLiked.value = likeRes.data.liked
-    if (bookmarkRes.code === 200) likeCount.value = bookmarkRes.data.count
+    const res = await likeApi.check(postId.value)
+    if (res.code === 200) isLiked.value = res.data.liked
   } catch {}
 }
 
@@ -151,6 +196,8 @@ async function toggleLike() {
     if (res.code === 200) {
       isLiked.value = res.data.liked
       likeCount.value += res.data.liked ? 1 : -1
+      likeAnimating.value = true
+      setTimeout(() => { likeAnimating.value = false }, 400)
     }
   } catch {}
 }
@@ -158,16 +205,50 @@ async function toggleLike() {
 async function toggleBookmark() {
   try {
     const res = await bookmarkApi.toggle(postId.value)
-    if (res.code === 200) isBookmarked.value = res.data.bookmarked
+    if (res.code === 200) {
+      isBookmarked.value = res.data.bookmarked
+      bookmarkAnimating.value = true
+      setTimeout(() => { bookmarkAnimating.value = false }, 400)
+    }
   } catch {}
 }
 
 async function handleDelete() {
   if (!confirm('确定删除此帖子？')) return
   try {
-    await postApi.delete(postId.value)
-    router.push('/posts')
-  } catch {}
+    const res = await postApi.delete(postId.value)
+    if (res.code === 200) {
+      router.push('/posts')
+    } else {
+      alert(res.message || res.detail || '删除失败')
+    }
+  } catch {
+    alert('删除失败，请稍后重试')
+  }
+}
+
+async function handleReport() {
+  if (!confirm('确定要举报该帖子吗？举报后将由 AI 自动审核内容')) return
+  reporting.value = true
+  try {
+    const res = await postApi.report(postId.value)
+    if (res.code === 200) {
+      // 展示 AI 审核结果
+      const data = res.data || {}
+      if (data.violated) {
+        alert(`AI 审核判定违规（${data.type || '违规'}）：${data.reason || ''}\n帖子已被删除`)
+        router.push('/posts')
+      } else {
+        alert('AI 审核未发现违规内容，帖子已保留')
+      }
+    } else {
+      alert(res.message || res.detail || '举报失败')
+    }
+  } catch {
+    alert('举报失败，请稍后重试')
+  } finally {
+    reporting.value = false
+  }
 }
 
 // 评论相关
@@ -211,7 +292,21 @@ async function deleteComment(commentId) {
   } catch {}
 }
 
+// 关键：从后端拉取真实用户信息覆盖 localStorage，防止账号切换后残留
+// 旧 user_info（含错误的 is_superuser）导致删除按钮误显示
+async function refreshCurrentUser() {
+  if (!isLoggedIn.value) return
+  try {
+    const res = await userApi.getCurrentUser()
+    if (res.code === 200 && res.data) {
+      currentUser.value = res.data
+      localStorage.setItem('user_info', JSON.stringify(res.data))
+    }
+  } catch {}
+}
+
 onMounted(() => {
+  refreshCurrentUser()
   loadPost()
   loadComments()
   loadLikeStatus()
@@ -220,6 +315,18 @@ onMounted(() => {
 </script>
 
 <style scoped>
+.skeleton-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.skeleton-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.skeleton-meta .skeleton-text { width: 80px; margin-bottom: 0; }
 .meta {
   display: flex;
   flex-wrap: wrap;
@@ -241,6 +348,13 @@ onMounted(() => {
 }
 .bookmarked {
   color: var(--warning);
+}
+.report-action-btn {
+  color: var(--text-muted);
+}
+.report-action-btn:hover {
+  color: var(--danger);
+  border-color: var(--danger);
 }
 .comment-item {
   margin-bottom: 12px;

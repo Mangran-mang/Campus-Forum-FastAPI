@@ -3,8 +3,17 @@
     <p>请先登录</p>
     <router-link to="/login" class="btn-primary" style="display:inline-block;margin-top:12px">去登录</router-link>
   </div>
-  <div v-else-if="loading" class="loading">加载中...</div>
-  <div v-else>
+  <div v-else-if="loading" class="skeleton-list">
+    <div class="skeleton-card">
+      <div class="skeleton skeleton-title" style="width:40%"></div>
+      <div class="skeleton skeleton-text" style="width:60%"></div>
+      <div class="skeleton skeleton-text" style="width:50%"></div>
+      <div class="skeleton skeleton-text" style="width:45%"></div>
+      <div class="skeleton skeleton-text" style="width:55%"></div>
+      <div class="skeleton skeleton-text" style="width:40%"></div>
+    </div>
+  </div>
+  <div v-else class="content-enter">
     <!-- 个人信息卡片（查看/编辑模式） -->
     <div class="card">
       <div class="flex-between" style="margin-bottom:16px">
@@ -20,7 +29,30 @@
         <div class="info-row"><label>昵称</label><span>{{ user.nickname || '未设置' }}</span></div>
         <div class="info-row"><label>用户名</label><span>{{ user.username || '未设置' }}</span></div>
         <div class="info-row"><label>性别</label><span>{{ user.gender || '未知' }}</span></div>
-        <div class="info-row"><label>身份</label><span>{{ user.is_superuser ? '管理员' : '普通用户' }}</span></div>
+        <div class="info-row">
+          <label>等级</label>
+          <span class="level-badge">{{ levelLabel(user.level) }} {{ levelName(user.level) }}</span>
+        </div>
+        <div class="info-row">
+          <label>经验</label><span>{{ user.experience || 0 }}</span>
+          <div class="level-progress" style="flex:1;margin-left:12px">
+            <div class="level-progress-bar" :style="{ width: levelProgress(user.experience || 0, user.level) + '%' }"></div>
+          </div>
+        </div>
+        <div class="info-row level-hint" v-if="nextLevelExp(user.level) !== null">
+          <label></label>
+          <span>距 {{ levelLabel(user.level + 1) }} 还差 <b>{{ nextLevelExp(user.level) - (user.experience || 0) }}</b> 经验</span>
+        </div>
+        <div class="info-row level-hint" v-else>
+          <label></label>
+          <span>已达到最高等级 🎉</span>
+        </div>
+        <div class="info-row">
+          <label>身份</label>
+          <span class="role-badge" :class="user.is_superuser ? 'role-admin' : 'role-user'">
+            {{ user.is_superuser ? '管理员' : '普通用户' }}
+          </span>
+        </div>
         <div class="info-row"><label>注册时间</label><span>{{ formatTime(user.created_time) }}</span></div>
       </template>
 
@@ -71,6 +103,7 @@ import { ref, onMounted, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import PostCard from '../components/PostCard.vue'
 import { userApi, postApi, clearAuth } from '../api/index.js'
+import { levelLabel, levelName, levelProgress, nextLevelExp } from '../utils/level.js'
 
 const router = useRouter()
 const isLoggedIn = ref(!!localStorage.getItem('access_token'))

@@ -1,9 +1,10 @@
 from fastapi import HTTPException
-from sqlalchemy import select, delete
+from sqlalchemy import select, delete, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from sqlalchemy.sql.functions import func
 
+from crud.user import UserService
 from models import User
 from models.model_comments import Comments
 from models.model_posts import Posts
@@ -36,9 +37,13 @@ class CommentsService:
             parent_id=comment.parent_id
         )
         db.add(orm_comment)
+        await db.flush()  # 先落库，暂不提交
+        # 回复奖励：评论者经验 +1，并重新计算等级（与评论同一事务）
+        user_service = UserService()
+        await user_service.crud_add_experience(db, commenter_uid, 1)
         await db.commit()
         await db.refresh(orm_comment)
-        # 同时加载 author 信息
+        # 同时加载 author 信息（已包含最新经验/等级）
         await db.refresh(orm_comment, ["author"])
         return orm_comment
 
@@ -105,7 +110,7 @@ class CommentsService:
         orm_comment = await self.crud_get_comment_by_comment_id(db, comment_id)
         if orm_comment is None:
             raise HTTPException(status_code=404, detail="该评论不存在")
-        if orm_comment.author_uid != current_user_uid and not user.is_superuser:
+        if orm_comment.author_uid != current_user_uid or not user.is_superuser:
             raise HTTPException(status_code=403, detail="没有权限删除该评论")
 
         stmt = delete(Comments).where(Comments.id == comment_id)

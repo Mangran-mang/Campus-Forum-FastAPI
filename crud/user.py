@@ -1,6 +1,7 @@
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from models.model_level_config import LevelConfig
 from models.model_user import User
 from schemas.user import UserCreateModel, UserUpdateModel
 from tools import security
@@ -85,3 +86,53 @@ class UserService:
             return orm_user
         else:
             return None
+
+    async def crud_get_user_by_uid(self, db: AsyncSession, uid: str):
+        """
+        通过 uid 获取 ORM 用户对象
+        """
+        stmt = select(User).where(User.uid == uid)
+        result = await db.execute(stmt)
+        return result.scalar_one_or_none()
+
+    async def _compute_level(self, db: AsyncSession, experience: int) -> int:
+        """
+        根据经验值对照 level_config 推导等级。
+        取 min_experience <= 当前经验 中门槛最高的那一级；
+        若没有任何等级门槛被满足（经验为 0），返回 0（新手/未分级）。
+        """
+        stmt = (
+            select(LevelConfig.level)
+            .where(LevelConfig.min_experience <= experience)
+            .order_by(LevelConfig.min_experience.desc())
+            .limit(1)
+        )
+        result = await db.execute(stmt)
+        level = result.scalar_one_or_none()
+        return level if level is not None else 0
+
+    async def crud_get_superusers(self, db: AsyncSession):
+        """
+        查询所有管理员(is_superuser=True)用户，返回 ORM User 对象列表
+        """
+        stmt = select(User).where(User.is_superuser == True)
+        result = await db.execute(stmt)
+        return result.scalars().all()
+
+    async def crud_add_experience(self, db: AsyncSession, uid: str, amount: int):
+        """
+        原子增加用户经验，并按 level_config 重新计算等级。
+        注意：本方法只执行 UPDATE，不提交事务，由调用方统一 commit，
+        以便把「发帖/评论」与「经验累加」放进同一个事务。
+        """
+        # 原子自增经验，避免并发下的 read-modify-write 丢失
+        await db.execute(
+            update(User).where(User.uid == uid).values(experience=User.experience + amount)
+        )
+        # 读取最新经验值并推导等级
+        result = await db.execute(select(User.experience).where(User.uid == uid))
+        experience = result.scalar_one()
+        level = await self._compute_level(db, experience)
+        await db.execute(
+            update(User).where(User.uid == uid).values(level=level)
+        )

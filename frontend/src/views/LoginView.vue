@@ -1,6 +1,6 @@
 <template>
   <div class="auth-page">
-    <div class="auth-card card">
+    <div class="auth-card card content-enter">
       <h2>登录</h2>
       <form @submit.prevent="handleLogin">
         <div class="field">
