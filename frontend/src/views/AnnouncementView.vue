@@ -6,7 +6,7 @@
       <!-- 在这里添加新的公告条目，最新的放在最上面 -->
       <!-- 格式：复制一条 .announce-item，修改日期和内容 -->
       <div class="announce-item card">
-        <div class="announce-date">2026-08-14</div>
+        <div class="announce-date">2026-08-17</div>
         <h3>论坛业务拓展</h3>
         <p>校园论坛1.0公测版</p>
         <ul>
