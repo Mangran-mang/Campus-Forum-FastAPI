@@ -391,6 +391,8 @@ async def get_database():
 
 然后也可以有稍微复杂一些的使用，比如用户权限验证、token验证等
 
+为什么它可以注入，它注入的究竟是什么，能拿到什么
+
 ## 六、自定义异常与注册
 
 自定义异常的**底层本质完全一致**，最终都会把「异常 / 状态码 → 处理函数」的映射注册到 FastAPI 应用的同一张异常处理器表中，只是语法形式和适用场景不同。
@@ -399,7 +401,9 @@ async def get_database():
 
 ###### 1.声明自定义异常类
 
-必须继承 Python 内置的 `Exception` 类，否则无法被 FastAPI 的异常机制捕获。
+通常继承 Python 内置的 `Exception` 类，因为不继承BaseException的子类，raise语句抛不出来
+
+因为add_exception_handler什么类型都能注册，问题在于能不能抛出
 
 这个类里可以什么都不写，也可以定义额外的属性belike
 
@@ -470,13 +474,13 @@ def create_exception_handler(status_code: int,initial_message: Any) -> Callable[
     return exception_handler
 ```
 
-这里返回的是一个“函数”，但已经提前限制好了返回的类型是一个可调用对象
+这里返回的是一个“函数”，但已经提前“标注”好了返回的类型是一个可调用对象
 
 Callable[[Request, Exception], JSONResponse]中[Request, Exception]是这个可调用对象的参数
 
 后面的JSONResponse是返回值类型
 
-异常处理函数中，Request和Exception是必须要写的，即使你在返回的信息中不适用它们
+异常处理函数中，Request和Exception是必须要写的，即使你在返回的信息中不使用它们
 
 Request参数：当前的请求对象 Request，包含请求路径、客户端 IP、请求头等信息
 
@@ -500,15 +504,108 @@ async def internal_server_error(request, exc):
 
 这个函数的作用如其他自定义异常一样，把所有状态码为500的请求，做函数内的处理逻辑
 
-## 中间件
+## 七、中间件
 
-目前我对中间件的理解比较浅，也许未来会不断加深
+例子：
 
-我认为，中间件就是把客户端发出的请求，进行二次加工，也就是在把请求传递给服务器之前先拦下来，做一些标记、处理然后再给服务器
+在中间件中无法追踪异常，因为它不会返回，只会抛出
 
-比如登录验证，使用中间件注册到fastapi后，所有路由函数，都要经过它
+```
+def register_middleware(app: FastAPI):
+    """
+    注册中间件
+    """
+    @app.middleware("http")
+    async def custom_loggin(request: Request, call_next):
+        # 进来时先执行call_next以上的代码
+        # ---------- 关键步骤：把请求传给下一个环节 ----------
+        # call_next 是 FastAPI 提供的函数，调用它会把请求传给：
+        # 下一个中间件 → 最后到你的接口路由
+        # 执行完会拿到接口返回的 response
+        response = await call_next(request)
+        message = f"{request.client.host} {request.method} {request.url.path} {response.status_code}"
+        # print(message)
+        return  response
 
-##  JWT的使用演示
+    app.add_middleware(  # 设置app可被跨域访问
+        CORSMiddleware,  # 中间件类 跨域中间件
+        allow_origins=["*"],  # *代表所有，允许所有源访问
+        allow_credentials=True,  # 允许携带cookie
+        allow_methods=["*"],  # 允许所有请求方法
+        allow_headers=["*"],  # 允许所有请求头
+    )
+```
+
+##### 封装+集中管理
+
+这里写成register_middleware是为了方便内部的函数能访问app这个FastAPI实例，所以如果你不想单独放到一个模块中的话，可以直接在主模块中写@你的实例名.middleware()，但代价是耦合了，主模块中内容可能会有点混乱，而我们封装好的函数直接拿去用的话就一个register_middleware(app)就行了，非常清晰
+
+这种方法我们称之为：注册函数模式
+
+##### 中间件的参数
+
+我们在本次示例中用到的中间件参数是'http'，但其实还有另一个参数
+
+| 参数                  | 处理什么       | 场景                   |
+| :-------------------- | :------------- | :--------------------- |
+| `"http"`              | HTTP 请求      | 普通的页面、API 接口   |
+| `"websocket"`（没用） | WebSocket 连接 | 实时通信（聊天、推送） |
+| 其他，但没用          |                |                        |
+
+首先就是不带括号的情况@app.middleware=啥也没注册，但也不报错
+
+有参数的情况，不管你传了什么参数都只处理http请求，这听起来很弱智很让人不解，但这是一个历史遗留的兼容问题
+
+如果想要一个能处理所有请求的中间件，就要手写ASGI中间件喽
+
+##### call_next的作用
+
+在call_next的前后可以分为请求和响应，这也代表了我们可以处理用户发出的信息和服务端返回的响应，也就是说，密码等私密信息在后端人员面前是裸奔的，我觉着吧，还可以在这里写一个简单的违规信息检测，比如骂人的字词可以直接在中间件里改掉
+
+##### 中间件的解剖
+
+我们都知道装饰器是add_middleware的语法糖而已，
+
+但实际middleware内部长这样
+
+```
+# FastAPI 的 middleware 装饰器源码
+def middleware(self, middleware_type: str):
+    def decorator(func):
+        self.add_middleware(BaseHTTPMiddleware, dispatch=func)  # ← 内部就是调用它！
+        return func
+    return decorator
+```
+
+add_middleware内部
+
+```
+def add_middleware(self, middleware_class: _MiddlewareFactory[P], *args: P.args, **kwargs: P.kwargs) -> None:
+    if self.middleware_stack is not None:  # pragma: no cover
+        raise RuntimeError("Cannot add middleware after an application has started")
+    self.user_middleware.insert(0, Middleware(middleware_class, *args, **kwargs))
+```
+
+也就是说，装饰器实际上是把参数传给了内部的middleware_class(这里对应BaseHTTPMiddleware类)的_ _init_ _，也就是把函数(其他中间件应该是配置参数而不是函数)给了这个类
+
+但这也延申出了另一个问题：middleware装饰器是不是只能用在http请求中
+
+我们看这里
+
+```
+app.add_middleware(  # 设置app可被跨域访问
+        CORSMiddleware...........
+```
+
+CORSMiddleware要的是配置，而不是函数
+
+那我们自然也没办法用修饰函数的装饰器来让CORSMiddleware这样的类保存配置，因为装饰器中的dispatch期望接收的是一个func
+
+哦对了，在我们导包的时候可能会有疑问，导入的CORSMiddleware究竟来自于starlette还是fastapi呢：实际上它们两个是一个东西，因为fastapi就是从starlette拿的CORSMiddleware
+
+嗯，大抵就是这样了
+
+##  八、JWT的使用演示
 
 需用到pyjwt库
 
@@ -599,7 +696,7 @@ encode需要三个参数
 
 关键在于request的获取，当该类实例化并注入时，就会拿到request，然后进行这一系列操作
 
-## 加密演示
+## 九、加密演示
 
 ```
 from passlib.context import CryptContext# 密码哈希库
@@ -626,9 +723,15 @@ deprecated="auto"，用于平滑升级，比如列表中有两种算法，但旧
 
 然后就可以pwd_context.hash进行加密，加密后再把加密后的内容存到数据库中
 
-## Redis的使用
+## 十、Redis缓存
 
-redis也许安装好后配置，包括客户端和服务端，服务端的地址和端口需要记一下
+#### Redis介绍
+
+Redis采用的是C/S(服务端、客户端)架构，目的是让数据存储和数据读取解耦
+
+所以Redis不是一定要把服务端和客户端部署到一个设备上，在实际的生产环境中，我们也会分开部署，以防性能不足
+
+但需要注意的是，在本机部署里我们可以写localhost或127.0.0.1，直接在内网访问，在实际生产环境中却有可能需要写另一台服务器的具体IP，当然如果你想在本机上访问自己的公网IP也可以，但可能需要考虑服务器不放行的情况，需要额外配置
 
 配置好后我们在脚本中创建Redis实例
 
@@ -636,7 +739,46 @@ redis也许安装好后配置，包括客户端和服务端，服务端的地址
 
 至少我现在的理解是这样的
 
-## alembic数据迁移
+案例：
+
+```
+async def try_report_deduplicate(post_id: int, user_uid: str, ttl: int = 86400) -> bool:
+    """
+    举报去重：同一用户对同一帖子在 ttl 秒内只能举报一次
+    使用 SET NX EX 原子操作，只有 key 不存在时才设置成功
+    返回 True 表示首次举报（放行），False 表示重复举报
+    Redis 异常时放行（保证举报功能可用，只是失去去重保护）
+    """
+    key = f"report:{post_id}:{user_uid}"
+    try:
+        # nx=True：仅当 key 不存在时写入成功，返回 True
+        result = await token_blocklist.set(name=key, value="1", nx=True, ex=ttl)
+        return bool(result)
+    except Exception as e:
+        print(f"举报去重失败{e}")
+        return True
+```
+
+通常我们处理一个事务时会先检查它在不在缓存中，不在则存入
+
+但在这个例子中token_blocklist.set(name=key, value="1", nx=True, ex=ttl)用到了nx参数，即检查+写入
+
+第一次举报时检查redis内部，不存在则写入，重复举报时再检查，存在就拒绝写入
+
+那么为什么要这样写，而不是传统的写法（比如项目里的黑名单业务逻辑）？
+
+因为同时发送两个请求时会产生这样的竞态现象
+
+```
+请求A：GET  report:5:u1  → 不存在
+请求B：GET  report:5:u1  → 不存在   ← B 还没看到 A 写入
+请求A：SET  report:5:u1  → 成功，放行
+请求B：SET  report:5:u1  → 也成功，也放行   ← 重复举报漏掉了！
+```
+
+这样就破坏了原子性
+
+## 十一、alembic数据迁移
 
 Alembic 是 **SQLAlchemy 官方配套的数据迁移工具**
 
@@ -660,7 +802,7 @@ Alembic迁移是同步操作，所以alembic.ini文件中你的url地址中的�
 
 安装pip install alembic
 
-告诉alembic数据库已是最新状态alembic stamp head
+(告诉alembic数据库已是最新状态指令:alembic stamp head)
 
 生成迁移文件alembic revision --autogenerate -m "你要写的内容"
 
@@ -683,9 +825,9 @@ SCP 覆盖后——文件被本地版本替换：
   → alembic 找不到这个文件 → 报错
 ```
 
-##### 为什么删了 merge 节点还不行
+##### 为什么删了生成的merge 节点还不行
 
-##### 你把 `9efb9ee4c18a` 文件删掉后，磁盘上暴露了本地两条并行分支：
+##### 9efb9ee4c18a文件删掉后，磁盘上暴露了本地两条并行分支：
 
 ```
 本地分支 A（旧）：3e9a1887c65d ← 孤立的"初始迁移"
@@ -707,8 +849,6 @@ SCP 覆盖后——文件被本地版本替换：
 ------
 
 ##### 解决过程
-
-三步走：
 
 **1. 把数据库版本号拉回分叉点**
 
@@ -743,9 +883,13 @@ alembic upgrade abcfdeda1df4
                                                                       永远不要手动 stamp / 改 down_revision
 ```
 
-## git版本控制
+## 十二、git版本控制
 
-记录代码修改（写注释、加功能、改 bug）；代码写崩了，**一键回滚到上一个正常版本**；多人协作写项目，不会互相覆盖代码；把代码备份到 GitHub/Gitee 云端，永不丢失
+为什么要用存代码到云端（当然你也可以自己把整个项目压缩一下放到某个小角落）
+
+1. 记录代码修改（写注释、加功能、改 bug）；
+2. 代码写崩了，**一键回滚到上一个正常版本**；
+3. 多人协作写项目，不会互相覆盖代码；把代码备份到 GitHub/Gitee 云端，永不丢失
 
 第一次使用需安装git和配置用户信息
 
@@ -787,6 +931,7 @@ git config --global --list
 
    - `.` 代表**当前目录所有文件 / 文件夹**
    - 只想上传单个文件：`git add 文件名`
+   - 你也可以git status看一下将会提交的代码对不对
 
 4. **提交到本地版本库**
 
@@ -871,15 +1016,13 @@ git config --global --list
 
 **后续所有更新**：只循环 `git add → git commit → git pull → git push` 四步即可。
 
-## 路由挂载及生命周期
+## 十三、路由挂载及生命周期
 
 为了模块和业务的分工清晰，我们通常把路由分开写
 
 最后再统一到主脚本挂载
 
 需要app.include_router函数，里面的参数就是指定的router实例
-
-
 
 ```
 @asynccontextmanager
@@ -899,3 +1042,98 @@ async def lifespan(app: FastAPI):
 # 把 lifespan 注册给 FastAPI 实例
 app = FastAPI(lifespan=lifespan)
 ```
+
+## 十四、WebSocket 实时通讯
+
+#### WebSocket与 HTTP 轮询对比
+
+轮询版私信的做法：前端 `setInterval(loadMessages, 120000)` 每 2 分钟主动请求一次服务器，服务器返回是否有新消息。
+
+**HTTP = 发短信，WebSocket = 打电话。**
+
+|          | HTTP 轮询                  | WebSocket                |
+| -------- | -------------------------- | ------------------------ |
+| 交互模式 | 一次请求一次响应，发完就断 | 一次握手，长连接持续收发 |
+| 谁主动   | 前端定时"无脑问"           | 服务器有消息就"主动推"   |
+| 实时性   | 最多延迟一个轮询周期       | 几乎实时                 |
+| 空响应   | 99% 是空的                 | 0%（有消息才推）         |
+
+核心差异：轮询是"定时问"，WebSocket 是"服务器送"——触发机制完全不同。
+
+#### WebSocket 连接的生命周期
+
+```
+客户端发起 HTTP 请求（带 Upgrade: websocket 头）
+        ↓
+服务器返回 101 Switching Protocols（握手成功）
+        ↓
+建立双向长连接（双方可随时 send，无需重新建连）
+        ↓
+任意一方关闭连接
+```
+
+#### 服务端用法（FastAPI 原生支持，无需额外库）
+
+| 方法                              | 作用                   |
+| --------------------------------- | ---------------------- |
+| `await websocket.accept()`        | 同意握手，建立连接     |
+| `await websocket.receive_text()`  | **阻塞**等待客户端消息 |
+| `await websocket.send_text(text)` | 推消息给客户端         |
+| `except WebSocketDisconnect`      | 捕获"客户端断开"       |
+
+变体：`receive_json()` / `send_json(dict)` 自动序列化 JSON，所以本项目的websocket方案还有用json格式的类型，但似乎要更麻烦一些，我看不懂嘞。
+
+#### WebSocket 路由的特殊之处
+
+**普通路由是"一次请求一次响应"，WebSocket 端点是"一通电话"**——从 accept 到断开，全程在一个函数里跑 `while True` 循环。
+
+"连接、收发、断开"不是一个接口的三个功能，而是**一个端点里循环的三个阶段**。不能像 HTTP 那样拆成 join/send/close 三个接口。
+
+#### 连接管理器（ConnectionManager）
+
+WebSocket 是有状态的，服务器需要记住"谁连的是哪个 socket"。这就是连接管理器的作用——本质是一个**内存字典**（不是数据库表）
+
+详细看\tools\connection
+
+#### 两个用户如何连通：靠服务器中转
+
+**用户之间从不直连**。A 和 B 各自只连服务器，服务器是"邮局"：
+
+```
+A →(wsA通道)→ 服务器 →(wsB通道)→ B
+```
+
+- A 连上 → 登记 `"A的uid" → wsA`
+- B 连上 → 登记 `"B的uid" → wsB`
+- A 发消息 → 服务器收到 → 查字典找到 B 的 wsB → 推给 B
+
+#### 关键区别：WebSocket 的 token 从 URL 来，不是请求头
+
+HTTP 接口用 `HTTPBearer` 依赖从 `Authorization` 请求头取 token。但 WebSocket 连的是 URL（`ws://.../chat/15?token=xxx`），`HTTPBearer` 不读 URL，所以**手动取 + 手动解码**：
+
+```python
+token = websocket.query_params.get("token")   # 从 URL 查询参数取
+token_data = decode_token(token)              # 手动解码（复用现成函数）
+```
+
+验证失败用 `await websocket.close(code=1008)` 拒绝（1008 = 策略违规），而不是 `raise HTTPException`。
+
+#### 我对websocket的理解：
+
+只针对会话哈，至于怎么创建会话，那就是其他接口该干的事情了。
+
+首先我们有会话，会话中包含两个用户的uid，这次与以往不同的是，当前用户的uid不再从我们自定义的HTTPBearer子类注入中获取，而是通过url来拿到token，用的是websocket自带的函数query_params。
+
+但是这楼里的token和我们通过依赖注入获得的token是一样的，所以可以用与过去同样的方式解码
+
+有了会话、当前用户uid，就能得出目标用户uid，于是就可以准备进行实时通讯了
+
+原本我想说这无非就是用连接、发送、接收、断开四个函数而已，但这让我踩了太多坑
+
+websocket端点是一个函数写完、像disconnect这种函数不需要await的话也不要写async、async会让函数变成什么、为什么await要配合async使用，如果不配合会怎么样（我知道这是异步编程基础！）、websocket对象究竟是什么、映射该怎么写为什么这么写、东西都写到一个接口里那什么时候把信息写入数据库、甚至我连字典怎么移除元素都忘了（我知道这很蠢）
+
+这些问题中的每一个都让我思考良久却也收获颇丰
+
+想完这些问题，websocket实时通讯也就写好了
+
+这是本项目最难的部分，至少我觉得是，坚持到这里，想必你也能够克服生活中的所有困难

@@ -18,7 +18,7 @@ service = GoodsService()
 @router.post(
     '/add_goods', )
 async def add_goods(
-        goods: GoodsCreatePyModel, db: AsyncSession = Depends(get_database, ),
+        goods: GoodsCreatePyModel, db: AsyncSession = Depends(get_database),
         user_details=Depends(access_token_bearer), ):
     author_uid = user_details["user"]["user_uid"]
     return await service.add_goods(

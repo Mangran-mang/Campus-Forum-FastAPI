@@ -9,7 +9,7 @@
           <span v-if="otherUser?.is_superuser" class="admin-badge">管理员</span>
         </span>
       </div>
-      <span class="chat-hint">每 2 分钟自动刷新</span>
+      <span class="chat-hint">实时消息</span>
     </div>
 
     <div class="chat-body card">
@@ -63,7 +63,7 @@ const otherUser = ref(null)
 const myUid = ref('')
 const otherName = computed(() => otherUser.value?.nickname || otherUser.value?.username || '未知用户')
 
-let timer = null
+let ws = null   // WebSocket 连接对象
 
 function formatTime(t) {
   if (!t) return ''
@@ -106,23 +106,41 @@ async function send() {
   if (!content || sending.value) return
   sending.value = true
   try {
-    const res = await messageApi.sendMessage(convId, content)
-    if (res.code === 200) {
-      draft.value = ''
-      await loadMessages()  // 发送后立即刷新，不用等 2 分钟
+    // 通过 WebSocket 发送（不再是 HTTP 接口）
+    if (!ws || ws.readyState !== 1) {   // readyState===1 表示连接已就绪
+      alert('连接尚未就绪，请稍后重试')
+      return
     }
+    ws.send(content)
+    draft.value = ''
+    // 不再手动 loadMessages：后端会同时给双方推信号，自己也能收到信号后刷新
   } catch {} finally {
     sending.value = false
   }
 }
 
+// ========== WebSocket 实时通讯 ==========
+function connectWs() {
+  const token = localStorage.getItem('access_token')
+  // ws:// 协议，走 vite 代理到后端 8000
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+  ws = new WebSocket(`${protocol}//${window.location.host}/ws/chat/${convId}?token=${token}`)
+
+  // 收到服务器推送的信号（对方发了消息）
+  ws.onmessage = () => {
+    loadMessages()   // 方案B：收到信号就刷新消息列表
+  }
+
+  // 连接异常时回退：仍保留轮询兜底（可选，先不写）
+}
+
 onMounted(() => {
-  loadMessages()
-  timer = setInterval(loadMessages, 120000)  // 2 分钟轮询刷新消息
+  loadMessages()   // 进来先加载历史消息
+  connectWs()      // 建立 WebSocket 连接，实时收信号
 })
 
 onUnmounted(() => {
-  if (timer) clearInterval(timer)
+  if (ws) ws.close()   // 关页面时关闭连接（替代原来的 clearInterval）
 })
 </script>
 

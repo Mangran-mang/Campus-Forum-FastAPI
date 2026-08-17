@@ -139,7 +139,7 @@ class MessageService:
             conv_id: int,
             current_uid: str
     ) -> Conversation:
-        """按 id 获取会话，并校验当前用户是参与者之一"""
+        """按 id 获取会话，并校验当前用户是参与者之一，返回空或会话对象"""
         stmt = select(Conversation).where(Conversation.id == conv_id)
         result = await db.execute(stmt)
         conv = result.scalar_one_or_none()
