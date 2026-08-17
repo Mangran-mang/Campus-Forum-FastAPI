@@ -8,7 +8,21 @@
       <div class="announce-item card">
         <div class="announce-date">2026-08-14</div>
         <h3>论坛业务拓展</h3>
-        <p>郑财论坛0.6内测版</p>
+        <p>校园论坛1.0公测版</p>
+        <ul>
+          <li> 私信功能改为使用websocket实时通讯</li>
+          <li> 使退出账号时进行浏览器缓存清理</li>
+          <li> 移除了轮询法私信的定时访问</li>
+          <li> 完结撒花</li>
+        </ul>
+        <p>如有问题反馈至3511687086@qq.com</p>
+      </div>
+
+
+      <div class="announce-item card">
+        <div class="announce-date">2026-08-14</div>
+        <h3>论坛业务拓展</h3>
+        <p>校园论坛0.6内测版</p>
         <ul>
           <li> 修复了帖子编辑时间显示bug</li>
           <li> 增加了AI审核员，它会理性删除被举报的帖子</li>
@@ -21,7 +35,7 @@
       <div class="announce-item card">
         <div class="announce-date">2026-08-3</div>
         <h3>论坛业务拓展</h3>
-        <p>郑财论坛0.5内测版</p>
+        <p>校园论坛0.5内测版</p>
         <ul>
           <li> 修复了邮箱注册的准确性</li>
           <li> 新增了私信功能</li>
@@ -35,7 +49,7 @@
       <div class="announce-item card">
         <div class="announce-date">2026-07-22</div>
         <h3>论坛业务拓展</h3>
-        <p>郑财论坛0.43内测版</p>
+        <p>校园论坛0.43内测版</p>
         <ul>
           <li> 新增举报功能，将直接通知管理员</li>
           <li> 修复了删除帖子功能，现已可以正常使用</li>
@@ -46,7 +60,7 @@
       <div class="announce-item card">
         <div class="announce-date">2026-07-15</div>
         <h3>论坛业务拓展</h3>
-        <p>郑财论坛0.40内测版</p>
+        <p>校园论坛0.40内测版</p>
         <ul>
           <li>交易模块新增图片功能</li>
           <li>用户可以标记交易情况</li>
@@ -61,7 +75,7 @@
       <div class="announce-item card">
         <div class="announce-date">2026-07-6</div>
         <h3>论坛业务拓展</h3>
-        <p>郑财论坛0.30内测版</p>
+        <p>校园论坛0.30内测版</p>
         <ul>
           <li>新增交易模块</li>
           <li>可以在商品下进行评论了</li>
@@ -72,7 +86,7 @@
       <div class="announce-item card">
         <div class="announce-date">2026-06-18</div>
         <h3>论坛正式上线</h3>
-        <p>郑财论坛0.21内测版</p>
+        <p>校园论坛0.21内测版</p>
         <ul>
           <li>修复了浏览量显示问题</li>
           <li>修复了通知功能的使用</li>

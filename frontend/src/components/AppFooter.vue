@@ -1,7 +1,7 @@
 <template>
   <footer class="app-footer">
     <div class="container footer-inner">
-      <span class="footer-copy">© {{ year }} 郑财论坛</span>
+      <span class="footer-copy">© {{ year }} 校园论坛</span>
       <a
         class="footer-beian"
         href="https://beian.miit.gov.cn/"

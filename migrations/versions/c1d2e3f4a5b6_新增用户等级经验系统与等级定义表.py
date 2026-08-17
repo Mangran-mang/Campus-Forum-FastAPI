@@ -40,7 +40,7 @@ def upgrade() -> None:
     bind = op.get_bind()
     bind.execute(text("""
         INSERT INTO level_config (level, name, min_experience, created_time) VALUES
-        (1,  '郑财魔丸',     100,   NOW()),
+        (1,  '校园魔丸',     100,   NOW()),
         (2,  '超级魔丸',     500,   NOW()),
         (3,  '积极分子', 1000,  NOW()),
         (4,  '活跃用户', 2000,  NOW()),
@@ -49,7 +49,7 @@ def upgrade() -> None:
         (7,  '专家',     10000, NOW()),
         (8,  '大佬',     15000, NOW()),
         (9,  '宗师',     20000, NOW()),
-        (10, '郑财的传说',     50000, NOW())
+        (10, '校园的传说',     50000, NOW())
     """))
 
 

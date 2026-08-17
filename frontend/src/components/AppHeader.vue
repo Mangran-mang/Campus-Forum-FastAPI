@@ -1,7 +1,7 @@
 <template>
   <header class="header">
     <div class="container header-inner">
-      <router-link to="/posts" class="logo" @click="menuOpen = false">郑财论坛</router-link>
+      <router-link to="/posts" class="logo" @click="menuOpen = false">校园论坛</router-link>
 
       <!-- 桌面端导航 -->
       <nav class="nav nav-desktop" v-if="isLoggedIn">

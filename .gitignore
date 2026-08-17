@@ -40,3 +40,10 @@ __pycache__/
 # Agent 本地记忆与配置（不上传）
 .workbuddy/
 .codebuddy/
+
+# 前端依赖与构建产物
+node_modules/
+frontend/dist/
+frontend/dist_old/
+frontend/dist_tmp/
+frontend/dist_tmp2/
