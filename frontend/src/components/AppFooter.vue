@@ -1,7 +1,7 @@
 <template>
   <footer class="app-footer">
     <div class="container footer-inner">
-      <span class="footer-copy">© {{ year }} 校园论坛</span>
+      <span class="footer-copy">© {{ year }} 郑财论坛</span>
       <a
         class="footer-beian"
         href="https://beian.miit.gov.cn/"
@@ -24,10 +24,14 @@ const year = new Date().getFullYear()
 
 <style scoped>
 .app-footer {
-  border-top: 2px solid var(--text);
-  background: #fffdf5;
+  border-top: 1px solid rgba(130, 165, 230, 0.16);
+  background: rgba(9, 13, 26, 0.6);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   padding: 16px 0;
   margin-top: 32px;
+  position: relative;
+  z-index: 1;
 }
 .footer-inner {
   display: flex;

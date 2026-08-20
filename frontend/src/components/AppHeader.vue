@@ -1,7 +1,7 @@
 <template>
   <header class="header">
     <div class="container header-inner">
-      <router-link to="/posts" class="logo" @click="menuOpen = false">校园论坛</router-link>
+      <router-link to="/posts" class="logo" @click="menuOpen = false">郑财论坛</router-link>
 
       <!-- 桌面端导航 -->
       <nav class="nav nav-desktop" v-if="isLoggedIn">
@@ -114,26 +114,14 @@ onUnmounted(() => {
   left: 0;
   right: 0;
   height: 56px;
-  background: #fffdf5;
-  /* 手绘波浪底边 */
-  border-bottom: 2px solid #2d2a26;
+  background: rgba(9, 13, 26, 0.72);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-bottom: 1px solid rgba(130, 165, 230, 0.16);
   z-index: 100;
   display: flex;
   align-items: center;
-  /* 胶带贴纸感 */
-  box-shadow: 0 3px 0 rgba(61, 55, 41, 0.08);
-}
-.header::before {
-  content: '';
-  position: absolute;
-  top: -8px;
-  left: 24px;
-  width: 64px;
-  height: 18px;
-  background: rgba(255, 217, 61, 0.55);
-  transform: rotate(-4deg);
-  border: 1.5px dashed rgba(45, 42, 38, 0.35);
-  z-index: -1;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.35);
 }
 .header-inner {
   display: flex;
@@ -143,20 +131,21 @@ onUnmounted(() => {
 }
 .logo {
   font-size: 20px;
-  font-weight: 600;
-  font-family: 'Ma Shan Zheng', 'ZCOOL KuaiLe', 'Kaiti SC', cursive;
-  color: var(--primary);
+  font-weight: 700;
+  font-family: 'Microsoft YaHei', '微软雅黑', sans-serif;
+  color: #fff;
   text-decoration: none;
   flex-shrink: 0;
-  background: var(--yellow);
-  padding: 2px 12px;
-  border: 2px solid var(--text);
-  border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px;
-  transform: rotate(-1.5deg);
-  transition: transform 0.2s ease;
+  background: linear-gradient(135deg, #8fc2ff, #6aa8ff 45%, #9d8cff);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  letter-spacing: 2px;
+  padding: 2px 4px;
+  transition: opacity 0.2s ease;
 }
 .logo:hover {
-  transform: rotate(0deg) scale(1.03);
+  opacity: 0.85;
   background-image: none;
 }
 .nav {
@@ -178,14 +167,14 @@ onUnmounted(() => {
   bottom: 0;
   left: 0;
   width: 0;
-  height: 4px;
-  background: var(--yellow);
-  border-radius: 2px;
+  height: 2px;
+  background: linear-gradient(90deg, var(--primary), var(--purple));
+  border-radius: 1px;
+  box-shadow: 0 0 6px rgba(106, 168, 255, 0.7);
   transition: width 0.25s ease;
-  z-index: -1;
 }
 .nav-link:hover {
-  color: var(--primary);
+  color: #fff;
   text-decoration: none;
 }
 .nav-link:hover::after {
@@ -195,15 +184,15 @@ onUnmounted(() => {
   width: 100%;
 }
 .router-link-active.nav-link {
-  color: var(--primary);
+  color: #fff;
 }
 .badge {
-  background: var(--danger);
+  background: linear-gradient(135deg, var(--danger), #e2556f);
   color: #fff;
   font-size: 11px;
   padding: 1px 6px;
-  border: 1.5px solid var(--text);
-  border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px;
+  border: none;
+  border-radius: 8px;
   margin-left: 4px;
   vertical-align: top;
   animation: pulse-subtle 2s ease-in-out infinite;
@@ -252,8 +241,10 @@ onUnmounted(() => {
   top: 56px;
   left: 0;
   right: 0;
-  background: #fffdf5;
-  border-bottom: 2px solid var(--text);
+  background: rgba(9, 13, 26, 0.95);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-bottom: 1px solid var(--border);
   box-shadow: var(--shadow-md);
   padding: 8px 0;
   z-index: 99;
@@ -264,7 +255,7 @@ onUnmounted(() => {
   font-size: 16px;
   color: var(--text);
   text-decoration: none;
-  border-bottom: 1px dashed var(--border);
+  border-bottom: 1px solid rgba(130, 165, 230, 0.10);
 }
 .mobile-link:last-child {
   border-bottom: none;

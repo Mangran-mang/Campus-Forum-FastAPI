@@ -53,26 +53,9 @@ function formatPrice(val) {
   position: relative;
   transition: box-shadow 0.3s ease, transform 0.3s ease;
 }
-/* 左侧彩色马克笔竖条（橙黄色系 = 二手交易） */
-.goods-card::before {
-  content: '';
-  position: absolute;
-  left: -2px;
-  top: 18%;
-  bottom: 18%;
-  width: 8px;
-  border: 1.5px solid var(--text);
-  border-radius: 4px;
-  background: var(--warning);
-  transform: rotate(3deg);
-}
-.goods-card:nth-child(even)::before {
-  background: var(--teal);
-  transform: rotate(-3deg);
-}
 .goods-card:hover {
   box-shadow: var(--shadow-md);
-  transform: translateY(-2px) rotate(0deg);
+  transform: translateY(-2px);
 }
 .goods-left {
   flex: 1;
@@ -99,38 +82,35 @@ function formatPrice(val) {
   background: var(--primary-light);
   color: var(--primary);
   padding: 2px 9px;
-  border: 1.5px solid var(--primary);
-  border-radius: 10px 2px 10px 2px / 2px 10px 2px 10px;
+  border: 1px solid rgba(106, 168, 255, 0.4);
+  border-radius: 6px;
   font-size: 12px;
   font-weight: 600;
-  transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease;
+  transition: background 0.2s ease, color 0.2s ease;
 }
 .goods-card:hover .tag {
-  background: var(--primary);
-  color: #fff;
+  background: rgba(106, 168, 255, 0.3);
 }
 .tag--default {
-  background: var(--bg);
+  background: rgba(130, 165, 230, 0.08);
   color: var(--text-muted);
   border-color: var(--border);
 }
 .status-badge {
   padding: 2px 9px;
-  border: 1.5px solid var(--text);
-  border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px;
+  border-radius: 6px;
   font-size: 12px;
   font-weight: 600;
-  transition: transform 0.2s ease;
 }
 .status-on {
-  background: #d1f5e8;
-  color: #00875a;
-  transform: rotate(-1deg);
+  background: rgba(61, 220, 151, 0.14);
+  color: #4fe3a4;
+  border: 1px solid rgba(61, 220, 151, 0.4);
 }
 .status-off {
-  background: #ffe8d1;
-  color: #b45309;
-  transform: rotate(1deg);
+  background: rgba(255, 184, 107, 0.14);
+  color: #ffb86b;
+  border: 1px solid rgba(255, 184, 107, 0.4);
 }
 .goods-footer {
   display: flex;
@@ -151,15 +131,9 @@ function formatPrice(val) {
   white-space: nowrap;
   transition: transform 0.3s ease;
   display: inline-block;
-  /* 价格框贴纸感 */
-  padding: 2px 10px;
-  border: 2px solid var(--danger);
-  border-radius: 15px 255px 15px 225px / 225px 15px 255px 15px;
-  background: #fff0f5;
-  transform: rotate(-2deg);
 }
 .goods-card:hover .goods-price {
-  transform: scale(1.06) rotate(0deg);
+  transform: scale(1.05);
 }
 
 @media (max-width: 768px) {

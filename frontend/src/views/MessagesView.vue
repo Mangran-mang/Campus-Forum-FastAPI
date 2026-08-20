@@ -178,12 +178,13 @@ onUnmounted(() => {
   justify-content: space-between;
   align-items: center;
   padding: 8px 12px;
-  border: 2px solid var(--text);
-  border-radius: 12px 4px 12px 4px / 4px 12px 4px 12px;
-  background: var(--bg-card);
-  transition: box-shadow 0.2s ease;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: rgba(17, 26, 48, 0.45);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 .search-item:hover {
+  border-color: var(--border-hover);
   box-shadow: var(--shadow);
 }
 .search-user-info {
@@ -232,14 +233,15 @@ onUnmounted(() => {
   height: 44px;
   flex-shrink: 0;
   border-radius: 50%;
-  background: var(--yellow);
-  border: 2px solid var(--text);
+  background: linear-gradient(135deg, var(--primary), var(--purple));
+  border: none;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 18px;
   font-weight: 600;
-  color: var(--text);
+  color: #fff;
+  box-shadow: 0 0 12px rgba(106, 168, 255, 0.35);
 }
 .conv-body {
   flex: 1;

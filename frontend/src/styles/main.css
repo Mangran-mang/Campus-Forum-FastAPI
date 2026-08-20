@@ -1,4 +1,4 @@
-/* 全局样式 - 涂鸦风校园讨论平台 (Doodle / Graffiti Style) */
+/* 全局样式 - 星空简约风校园论坛 (Space / Minimal Style) */
 
 * {
   margin: 0;
@@ -7,37 +7,39 @@
 }
 
 :root {
-  /* ===== 涂鸦马克笔色系 ===== */
-  --primary: #4d7cfe;          /* 涂鸦蓝 */
-  --primary-hover: #3a67e0;
-  --primary-light: #dbe6ff;
-  --success: #00c896;          /* 荧光绿 */
-  --danger: #ff5d8f;           /* 荧光粉 */
-  --warning: #ff9f43;          /* 亮橙 */
-  --yellow: #ffd93d;           /* 柠檬黄 */
-  --purple: #b388ff;           /* 荧光紫 */
-  --teal: #00d4c8;
-  --text: #2d2a26;             /* 深墨色 */
-  --text-secondary: #6b5f52;
-  --text-muted: #a8947d;
-  --bg: #fdf6e3;               /* 米色纸张 */
-  --bg-card: #fffdf5;          /* 白纸卡片 */
-  --border: #e8dcc0;           /* 牛皮纸边框 */
-  --border-hover: #cbb99a;
-  --radius: 12px;
-  --shadow: 3px 3px 0 rgba(61, 55, 41, 0.12);
-  --shadow-md: 5px 5px 0 rgba(61, 55, 41, 0.15);
+  /* ===== 太空色系 ===== */
+  --primary: #6aa8ff;          /* 太空蓝 */
+  --primary-hover: #4f8ef0;
+  --primary-light: rgba(106, 168, 255, 0.16);
+  --success: #3ddc97;          /* 星云绿 */
+  --danger: #ff7a90;           /* 星尘粉 */
+  --warning: #ffb86b;          /* 恒星橙 */
+  --yellow: #f5c542;           /* 星光黄 */
+  --purple: #9d8cff;           /* 星云紫 */
+  --teal: #3ed6c8;
+  --text: #e9edf6;             /* 星白文字 */
+  --text-secondary: #a9b4cc;
+  --text-muted: #78849c;
+  --bg: #0b1120;               /* 深空底色 */
+  --bg-card: rgba(17, 26, 48, 0.55);   /* 半透明玻璃卡片 */
+  --bg-card-solid: #131c33;
+  --border: rgba(130, 165, 230, 0.18);
+  --border-hover: rgba(130, 165, 230, 0.38);
+  --radius: 14px;
+  --shadow: 0 6px 24px rgba(0, 0, 0, 0.30);
+  --shadow-md: 0 12px 36px rgba(0, 0, 0, 0.45);
+}
+
+html {
+  height: 100%;
 }
 
 body {
-  /* 手写字体栈：马善政楷书 → 站酷快乐体 → 系统手写体回退 */
-  font-family: 'Ma Shan Zheng', 'ZCOOL KuaiLe', 'Kaiti SC', 'STKaiti', 'KaiTi', 'Comic Sans MS', cursive, sans-serif;
-  background-color: var(--bg);
-  /* 涂鸦本网格纹理 */
-  background-image:
-    linear-gradient(rgba(77, 124, 254, 0.05) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 157, 67, 0.05) 1px, transparent 1px);
-  background-size: 26px 26px;
+  /* 微软雅黑（Windows 自带，无需外链字体） */
+  font-family: 'Microsoft YaHei', '微软雅黑', 'PingFang SC', 'Helvetica Neue', Arial, sans-serif;
+  /* 深空渐变背景（与星空特效同一底色） */
+  background: radial-gradient(ellipse at bottom, #1b2735 0%, #090a0f 100%);
+  background-attachment: fixed;
   color: var(--text);
   line-height: 1.6;
   min-height: 100vh;
@@ -46,14 +48,10 @@ body {
 a {
   color: var(--primary);
   text-decoration: none;
-  /* 马克笔划线效果 */
-  background-image: linear-gradient(transparent 62%, rgba(255, 217, 61, 0.7) 62%);
-  background-size: 0 100%;
-  background-repeat: no-repeat;
-  transition: background-size 0.25s ease, color 0.15s ease, opacity 0.15s ease;
+  transition: color 0.15s ease, opacity 0.15s ease;
 }
 a:hover {
-  background-size: 100% 100%;
+  color: var(--primary-hover);
   text-decoration: none;
 }
 
@@ -61,52 +59,62 @@ button {
   cursor: pointer;
   font-size: 14px;
   font-family: inherit;
-  border: 2px solid var(--text);
-  /* 手绘不规则圆角 */
-  border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
   padding: 8px 18px;
-  background: var(--bg-card);
-  box-shadow: 2.5px 2.5px 0 var(--text);
+  background: var(--bg-card-solid);
+  color: var(--text);
+  box-shadow: var(--shadow);
   transition: all 0.2s;
 }
 button:hover {
-  transform: translate(-1.5px, -1.5px);
-  box-shadow: 4px 4px 0 var(--text);
+  border-color: var(--primary);
+  color: var(--primary);
+  transform: translateY(-1px);
 }
 button:active {
-  transform: translate(1px, 1px);
-  box-shadow: 1px 1px 0 var(--text);
+  transform: translateY(0);
+}
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
 }
 
 input, textarea, select {
   font-size: 14px;
   font-family: inherit;
-  border: 2px solid var(--text);
-  border-radius: 12px 4px 12px 4px / 4px 12px 4px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
   padding: 10px 14px;
   outline: none;
-  background: var(--bg-card);
+  background: rgba(10, 16, 32, 0.6);
+  color: var(--text);
   transition: border-color 0.2s, box-shadow 0.2s;
   width: 100%;
 }
+input::placeholder, textarea::placeholder {
+  color: var(--text-muted);
+}
 input:focus, textarea:focus, select:focus {
   border-color: var(--primary);
-  box-shadow: 3px 3px 0 var(--primary-light);
+  box-shadow: 0 0 0 3px var(--primary-light);
 }
 
 .btn-primary {
-  background: var(--primary);
+  background: linear-gradient(135deg, var(--primary), #4a7cf0);
   color: #fff;
-  border-color: var(--text);
+  border-color: transparent;
 }
 .btn-primary:hover {
-  background: var(--primary-hover);
+  background: linear-gradient(135deg, var(--primary-hover), #3a68d8);
+  color: #fff;
 }
 
 .btn-outline {
-  background: var(--bg-card);
-  color: var(--text);
-  border: 2px solid var(--text);
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
 }
 .btn-outline:hover {
   border-color: var(--primary);
@@ -114,12 +122,13 @@ input:focus, textarea:focus, select:focus {
 }
 
 .btn-danger {
-  background: var(--danger);
+  background: linear-gradient(135deg, var(--danger), #e2556f);
   color: #fff;
-  border-color: var(--text);
+  border-color: transparent;
 }
 .btn-danger:hover {
   opacity: 0.9;
+  color: #fff;
 }
 
 .btn-sm {
@@ -128,6 +137,9 @@ input:focus, textarea:focus, select:focus {
 }
 
 .container {
+  /* 必须显式 width: 100%：当 .container 作为 flex 子项（如 main）时，
+     margin: 0 auto 会覆盖默认 stretch 拉伸，导致容器退化成 fit-content 收缩成内容宽度。 */
+  width: 100%;
   max-width: 800px;
   margin: 0 auto;
   padding: 0 16px;
@@ -254,9 +266,9 @@ input:focus, textarea:focus, select:focus {
 .skeleton {
   background: linear-gradient(
     90deg,
-    var(--border) 25%,
-    #f5eeda 50%,
-    var(--border) 75%
+    rgba(130, 165, 230, 0.10) 25%,
+    rgba(160, 190, 245, 0.20) 50%,
+    rgba(130, 165, 230, 0.10) 75%
   );
   background-size: 200% 100%;
   animation: shimmer 1.5s ease-in-out infinite;
@@ -280,7 +292,7 @@ input:focus, textarea:focus, select:focus {
 .skeleton-card {
   padding: 20px;
   background: var(--bg-card);
-  border: 2px dashed var(--border);
+  border: 1px solid var(--border);
   border-radius: var(--radius);
   margin-bottom: 12px;
 }
@@ -330,7 +342,7 @@ input:focus, textarea:focus, select:focus {
 
   .card {
     padding: 14px;
-    border-radius: 10px;
+    border-radius: 12px;
   }
 
   button {
@@ -352,26 +364,22 @@ input:focus, textarea:focus, select:focus {
   }
 }
 
-/* ===== 涂鸦风卡片（贴纸感） ===== */
+/* ===== 太空玻璃卡片 ===== */
 .card {
   background: var(--bg-card);
-  border: 2px solid var(--text);
-  border-radius: 18px 8px 18px 8px / 8px 18px 8px 18px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
   padding: 20px;
   box-shadow: var(--shadow);
-  transition: box-shadow 0.25s ease, transform 0.25s ease;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  transition: box-shadow 0.25s ease, transform 0.25s ease, border-color 0.25s ease;
   position: relative;
-}
-/* 卡片交替轻微旋转，制造手贴乱感 */
-.card:nth-child(even) {
-  transform: rotate(0.4deg);
-}
-.card:nth-child(odd) {
-  transform: rotate(-0.3deg);
 }
 .card:hover {
   box-shadow: var(--shadow-md);
-  transform: translateY(-2px) rotate(0deg);
+  border-color: var(--border-hover);
+  transform: translateY(-2px);
 }
 
 .flex-between {
@@ -411,77 +419,68 @@ input:focus, textarea:focus, select:focus {
   padding-bottom: 40px;
 }
 
-/* ===== 等级与管理员徽章（贴纸感） ===== */
+/* ===== 等级与管理员徽章 ===== */
 .lv-badge {
   display: inline-block;
-  background: var(--yellow);
-  color: var(--text);
+  background: rgba(245, 197, 66, 0.18);
+  color: var(--yellow);
   font-size: 11px;
   font-weight: 600;
   padding: 1px 7px;
-  border: 1.5px solid var(--text);
-  border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px;
+  border: 1px solid rgba(245, 197, 66, 0.45);
+  border-radius: 6px;
   margin-left: 6px;
   vertical-align: middle;
-  transform: rotate(-2deg);
 }
 .admin-badge {
   display: inline-block;
-  background: var(--danger);
-  color: #fff;
+  background: rgba(255, 122, 144, 0.18);
+  color: var(--danger);
   font-size: 11px;
   font-weight: 600;
   padding: 1px 7px;
-  border: 1.5px solid var(--text);
-  border-radius: 15px 255px 15px 225px / 225px 15px 255px 15px;
+  border: 1px solid rgba(255, 122, 144, 0.45);
+  border-radius: 6px;
   margin-left: 4px;
   vertical-align: middle;
-  transform: rotate(2deg);
 }
 .role-badge {
   display: inline-block;
   font-size: 12px;
   font-weight: 600;
   padding: 2px 10px;
-  border: 1.5px solid var(--text);
-  border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
 }
 .role-admin {
-  background: var(--danger);
-  color: #fff;
+  background: rgba(255, 122, 144, 0.18);
+  color: var(--danger);
 }
 .role-user {
-  background: var(--bg-card);
+  background: var(--bg-card-solid);
   color: var(--text-secondary);
 }
 .level-badge {
   display: inline-block;
-  background: linear-gradient(135deg, var(--primary), var(--purple));
-  color: #fff;
+  background: linear-gradient(135deg, rgba(106, 168, 255, 0.25), rgba(157, 140, 255, 0.25));
+  color: #cfe0ff;
   font-size: 12px;
   font-weight: 600;
   padding: 2px 10px;
-  border: 1.5px solid var(--text);
-  border-radius: 15px 255px 15px 225px / 225px 15px 255px 15px;
-  transform: rotate(-1deg);
+  border: 1px solid rgba(106, 168, 255, 0.4);
+  border-radius: 6px;
 }
 .level-progress {
-  height: 10px;
-  background: var(--bg);
-  border: 2px solid var(--text);
-  border-radius: 6px;
+  height: 8px;
+  background: rgba(130, 165, 230, 0.12);
+  border: 1px solid var(--border);
+  border-radius: 4px;
   overflow: hidden;
   margin: 8px 0 4px;
 }
 .level-progress-bar {
   height: 100%;
-  background: repeating-linear-gradient(
-    45deg,
-    var(--primary),
-    var(--primary) 8px,
-    var(--purple) 8px,
-    var(--purple) 16px
-  );
+  background: linear-gradient(90deg, var(--primary), var(--purple));
   transition: width 0.4s ease;
 }
 .level-progress-text {
@@ -489,36 +488,34 @@ input:focus, textarea:focus, select:focus {
   color: var(--text-muted);
 }
 
-/* ===== 涂鸦标签（贴纸） ===== */
+/* ===== 标签 ===== */
 .tag {
   display: inline-block;
   background: var(--primary-light);
   color: var(--primary);
   padding: 2px 9px;
-  border: 1.5px solid var(--primary);
-  border-radius: 10px 2px 10px 2px / 2px 10px 2px 10px;
+  border: 1px solid rgba(106, 168, 255, 0.4);
+  border-radius: 6px;
   font-size: 12px;
   font-weight: 600;
-  transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease;
+  transition: background 0.2s ease, color 0.2s ease;
 }
 .tag:hover {
-  transform: rotate(-3deg) scale(1.05);
+  background: rgba(106, 168, 255, 0.3);
 }
 
-/* ===== 马克笔高亮标题 ===== */
+/* ===== 简约高亮 ===== */
 .highlight {
-  background-image: linear-gradient(transparent 62%, rgba(255, 217, 61, 0.75) 62%);
-  background-size: 100% 100%;
-  background-repeat: no-repeat;
+  background: linear-gradient(transparent 62%, rgba(106, 168, 255, 0.30) 62%);
   padding: 0 4px;
 }
 
 h1, h2, h3 {
-  font-family: 'Ma Shan Zheng', 'ZCOOL KuaiLe', 'Kaiti SC', cursive;
+  font-family: 'Microsoft YaHei', '微软雅黑', 'PingFang SC', sans-serif;
   letter-spacing: 0.5px;
 }
 
-/* 内容中的标题加马克笔点缀 */
+/* 标题前简约发光竖线 */
 h2, h3 {
   position: relative;
   padding-left: 12px;
@@ -527,13 +524,12 @@ h2::before, h3::before {
   content: '';
   position: absolute;
   left: 0;
-  top: 8%;
-  bottom: 8%;
-  width: 6px;
-  background: var(--yellow);
-  border: 1.5px solid var(--text);
-  border-radius: 3px;
-  transform: rotate(-4deg);
+  top: 12%;
+  bottom: 12%;
+  width: 4px;
+  background: linear-gradient(180deg, var(--primary), var(--purple));
+  border-radius: 2px;
+  box-shadow: 0 0 8px rgba(106, 168, 255, 0.6);
 }
 
 @media (max-width: 768px) {

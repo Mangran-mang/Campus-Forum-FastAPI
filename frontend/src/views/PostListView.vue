@@ -7,7 +7,6 @@
           <option value="">全部板块</option>
           <option v-for="c in categories" :key="c.id" :value="c.id">{{ c.name }}</option>
         </select>
-        <router-link to="/posts/create" class="btn-primary" v-if="isLoggedIn">写帖子</router-link>
       </div>
     </div>
 
@@ -54,7 +53,6 @@ const page = ref(1)
 const hasMore = ref(false)
 const loading = ref(true)
 const filterCategory = ref('')
-const isLoggedIn = ref(!!localStorage.getItem('access_token'))
 
 async function loadPosts(p) {
   page.value = p

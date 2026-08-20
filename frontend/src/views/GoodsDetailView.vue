@@ -308,7 +308,8 @@ onMounted(() => {
 .goods-image-placeholder {
   width: 240px;
   height: 240px;
-  background: var(--bg);
+  background: rgba(17, 26, 48, 0.45);
+  border: 1px solid var(--border);
   border-radius: var(--radius);
   display: flex;
   align-items: center;
@@ -404,12 +405,14 @@ onMounted(() => {
   font-weight: 500;
 }
 .status-on {
-  background: #dcfce7;
-  color: #16a34a;
+  background: rgba(61, 220, 151, 0.14);
+  color: #4fe3a4;
+  border: 1px solid rgba(61, 220, 151, 0.4);
 }
 .status-off {
-  background: #fef3c7;
-  color: #d97706;
+  background: rgba(255, 184, 107, 0.14);
+  color: #ffb86b;
+  border: 1px solid rgba(255, 184, 107, 0.4);
 }
 .goods-meta {
   border-top: 1px solid var(--border);

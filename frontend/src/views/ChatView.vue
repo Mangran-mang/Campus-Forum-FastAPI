@@ -170,13 +170,14 @@ onUnmounted(() => {
   height: 34px;
   flex-shrink: 0;
   border-radius: 50%;
-  background: var(--yellow);
-  border: 2px solid var(--text);
+  background: linear-gradient(135deg, var(--primary), var(--purple));
+  border: none;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 15px;
   font-weight: 600;
+  color: #fff;
 }
 .chat-name {
   font-size: 16px;
@@ -215,14 +216,15 @@ onUnmounted(() => {
 .msg-bubble {
   max-width: 70%;
   padding: 8px 12px;
-  border: 2px solid var(--text);
-  border-radius: 14px 4px 14px 4px / 4px 14px 4px 14px;
-  background: var(--bg-card);
-  box-shadow: 2px 2px 0 var(--text);
+  border: 1px solid var(--border);
+  border-radius: 14px 14px 14px 4px;
+  background: rgba(20, 30, 56, 0.6);
+  box-shadow: none;
 }
 .msg-row.mine .msg-bubble {
-  background: var(--primary-light);
-  border-radius: 4px 14px 4px 14px / 14px 4px 14px 4px;
+  background: rgba(106, 168, 255, 0.22);
+  border-color: rgba(106, 168, 255, 0.45);
+  border-radius: 14px 14px 4px 14px;
 }
 .msg-content {
   font-size: 14px;

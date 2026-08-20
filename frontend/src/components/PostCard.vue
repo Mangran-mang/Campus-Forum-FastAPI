@@ -102,28 +102,9 @@ function formatTime(t) {
   position: relative;
   transition: box-shadow 0.3s ease, transform 0.3s ease;
 }
-/* 左侧彩色马克笔竖条 */
-.post-card::before {
-  content: '';
-  position: absolute;
-  left: -2px;
-  top: 18%;
-  bottom: 18%;
-  width: 8px;
-  border: 1.5px solid var(--text);
-  border-radius: 4px;
-  background: var(--primary);
-  transform: rotate(-3deg);
-}
-.post-card:nth-child(even)::before {
-  background: var(--yellow);
-}
-.post-card:nth-child(3n)::before {
-  background: var(--success);
-}
 .post-card:hover {
   box-shadow: var(--shadow-md);
-  transform: translateY(-2px) rotate(0deg);
+  transform: translateY(-2px);
 }
 .post-header {
   display: flex;
@@ -169,15 +150,14 @@ function formatTime(t) {
   background: var(--primary-light);
   color: var(--primary);
   padding: 2px 9px;
-  border: 1.5px solid var(--primary);
-  border-radius: 10px 2px 10px 2px / 2px 10px 2px 10px;
+  border: 1px solid rgba(106, 168, 255, 0.4);
+  border-radius: 6px;
   font-size: 12px;
   font-weight: 600;
-  transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease;
+  transition: background 0.2s ease, color 0.2s ease;
 }
 .post-card:hover .tag {
-  background: var(--primary);
-  color: #fff;
+  background: rgba(106, 168, 255, 0.3);
 }
 .report-btn {
   position: absolute;
@@ -185,11 +165,11 @@ function formatTime(t) {
   right: 12px;
   font-size: 12px;
   padding: 1px 8px;
-  border: 1.5px solid var(--text);
-  border-radius: 10px 2px 10px 2px / 2px 10px 2px 10px;
-  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
   color: var(--text-muted);
-  box-shadow: 1.5px 1.5px 0 var(--text);
+  box-shadow: none;
   cursor: pointer;
   transition: color 0.2s ease, border-color 0.2s ease;
   z-index: 1;
@@ -197,7 +177,6 @@ function formatTime(t) {
 .report-btn:hover {
   color: var(--danger);
   border-color: var(--danger);
-  box-shadow: 2.5px 2.5px 0 var(--danger);
   transform: none;
 }
 
