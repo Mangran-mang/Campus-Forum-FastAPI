@@ -1,6 +1,6 @@
 from typing import Optional
 
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, ConfigDict
 
 
 class UserCreateModel(BaseModel):
@@ -26,3 +26,11 @@ class UserUpdateModel(BaseModel):
 class UserLoginModel(BaseModel):
     email: EmailStr
     password: str
+
+class UserOutModel(BaseModel):
+    ## 对外输出的用户信息白名单，password 永远不进这个模型
+    model_config = ConfigDict(from_attributes=True)  # 允许直接从 ORM 对象读取属性
+
+    uid: str
+    email: str
+    is_superuser: bool  # 再按前端需要补：昵称、头像、experience、level 等

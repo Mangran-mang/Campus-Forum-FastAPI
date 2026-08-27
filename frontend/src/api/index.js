@@ -88,7 +88,7 @@ export const userApi = {
   getCurrentUser: () => request('/user/current_user'),
   updateUser: (data) => request('/user/update', { method: 'POST', body: JSON.stringify(data) }),
   deleteUser: (email) => request(`/user/delete/${email}`, { method: 'DELETE' }),
-  logout: () => request('/user/logout'),
+  logout: () => request('/user/logout', { method: 'POST' }),
 }
 
 // ============== 帖子相关 ==============

@@ -40,6 +40,17 @@ class UserService:
 
         return user_obj
 
+    async def crud_get_user_by_email_or_none(
+            self, db: AsyncSession, email: str
+            ):
+        """
+        与 crud_get_user_by_email 的区别：查不到返回 None 而不抛异常
+        专供登录等需要"自己处理不存在场景"的调用方使用
+        """
+        stmt = select(User).where(User.email == email)
+        result = await db.execute(stmt)
+        return result.scalar_one_or_none()
+
 
     async def crud_delete_user(self, db: AsyncSession, email: str):
         """

@@ -6,6 +6,28 @@
       <!-- 在这里添加新的公告条目，最新的放在最上面 -->
       <!-- 格式：复制一条 .announce-item，修改日期和内容 -->
       <div class="announce-item card">
+        <div class="announce-date">2026-08-27</div>
+        <h3>论坛环境安全优化</h3>
+        <p>郑财论坛1.2优化版</p>
+        <ul>
+          <li> 限制非管理员查询功能，增强安全性</li>
+          <li> 解决了登出时账号缓存的问题</li>
+          <li> 强化了登录过程的安全性，可防御时序攻击</li>
+        </ul>
+        <p>如有问题反馈至3511687086@qq.com</p>
+      </div>
+
+      <div class="announce-item card">
+        <div class="announce-date">2026-08-26</div>
+        <h3>论坛环境安全优化</h3>
+        <p>郑财论坛1.1公测版</p>
+        <ul>
+          <li> 新增校验模型，增加响应安全性</li>
+        </ul>
+        <p>如有问题反馈至3511687086@qq.com</p>
+      </div>
+
+      <div class="announce-item card">
         <div class="announce-date">2026-08-20</div>
         <h3>论坛更新与优化</h3>
         <p>郑财论坛1.02公测版</p>
