@@ -4,6 +4,7 @@ venv/
 env/
 .env
 .env.*
+.gitignore
 
 # Python缓存文件
 __pycache__/
@@ -23,6 +24,7 @@ logs/
 .idea/
 *.swp
 *.swo
+alembic.ini
 
 # 数据库文件（如果用SQLite）
 *.db
@@ -48,3 +50,4 @@ frontend/dist_old/
 frontend/dist_tmp/
 frontend/dist_tmp2/
 uploads/
+

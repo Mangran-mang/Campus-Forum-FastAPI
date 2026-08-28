@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 from fastapi import HTTPException
 from sqlalchemy import select, or_, func
@@ -200,7 +200,7 @@ class MessageService:
             content=content
         )
         db.add(orm_msg)
-        conv.updated_time = datetime.now()
+        conv.updated_time = datetime.now(timezone.utc)
         await db.commit()
         await db.refresh(orm_msg)
 

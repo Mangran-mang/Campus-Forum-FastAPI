@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 from fastapi import HTTPException
 from sqlalchemy import select, or_, update
@@ -126,7 +126,7 @@ class PostService:
             setattr(orm_post,key,value)
 
         # 手动记录编辑时间（模型已移除 onupdate，避免浏览行为污染该字段）
-        orm_post.updated_time = datetime.now()
+        orm_post.updated_time = datetime.now(timezone.utc)
 
         await db.commit()
         await db.refresh(orm_post)

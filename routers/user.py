@@ -234,6 +234,7 @@ async def refresh_token(
     本函数只接收刷新令牌
     """
     token_timestamp = token_data["exp"]  # 拿到令牌过期时间
+    # timestamp个方法会把 naive 时间按本地时区解释再转成 UTC 时间戳
     if token_timestamp <= int(datetime.now().timestamp()):  # 如果令牌已过期
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="刷新令牌已过期", )

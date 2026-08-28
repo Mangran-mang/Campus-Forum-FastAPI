@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -65,7 +65,7 @@ class NotificationService:
         stmt = (
             update(Notification)
             .where(Notification.id == notif_id, Notification.recipient_uid == user_uid)
-            .values(is_read=True, read_time=datetime.now())
+            .values(is_read=True, read_time=datetime.now(timezone.utc))
         )
         await db.execute(stmt)
         await db.commit()
@@ -76,7 +76,7 @@ class NotificationService:
         stmt = (
             update(Notification)
             .where(Notification.recipient_uid == user_uid, Notification.is_read == False)
-            .values(is_read=True, read_time=datetime.now())
+            .values(is_read=True, read_time=datetime.now(timezone.utc))
         )
         await db.execute(stmt)
         await db.commit()

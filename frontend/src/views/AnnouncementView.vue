@@ -6,9 +6,20 @@
       <!-- 在这里添加新的公告条目，最新的放在最上面 -->
       <!-- 格式：复制一条 .announce-item，修改日期和内容 -->
       <div class="announce-item card">
+        <div class="announce-date">2026-08-28</div>
+        <h3>论坛环境安全优化</h3>
+        <p>郑财论坛1.16优化版</p>
+        <ul>
+          <li> 增强数据库连接稳定性与性能</li>
+          <li> 修复了不同时区会造成token时间误差的BUG</li>
+        </ul>
+        <p>如有问题反馈至3511687086@qq.com</p>
+      </div>
+
+      <div class="announce-item card">
         <div class="announce-date">2026-08-27</div>
         <h3>论坛环境安全优化</h3>
-        <p>郑财论坛1.2优化版</p>
+        <p>郑财论坛1.12优化版</p>
         <ul>
           <li> 限制非管理员查询功能，增强安全性</li>
           <li> 解决了登出时账号缓存的问题</li>
