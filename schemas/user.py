@@ -34,3 +34,7 @@ class UserOutModel(BaseModel):
     uid: str
     email: str
     is_superuser: bool  # 再按前端需要补：昵称、头像、experience、level 等
+    gender:str
+    nickname:str
+    level:int
+    experience:int
