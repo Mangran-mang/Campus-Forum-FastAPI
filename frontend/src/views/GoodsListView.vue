@@ -7,7 +7,7 @@
           <option value="">全部分类</option>
           <option v-for="c in classifyList" :key="c" :value="c">{{ c }}</option>
         </select>
-        <router-link to="/goods/create" class="btn-primary" v-if="isLoggedIn">发布商品</router-link>
+        <router-link to="/goods/create" class="publish-btn" v-if="isLoggedIn">发布商品</router-link>
       </div>
     </div>
 
@@ -95,6 +95,22 @@ onMounted(() => {
 </script>
 
 <style scoped>
+.publish-btn {
+  background: transparent;
+  color: var(--primary);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 6px 14px;
+  font-size: 14px;
+  line-height: 1.5;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: border-color 0.2s, color 0.2s;
+}
+.publish-btn:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
 .classify-select {
   width: auto;
   min-width: 100px;

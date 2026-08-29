@@ -71,11 +71,21 @@ async function handleSubmit() {
     if (res.code === 200 || (res && !res.code)) {
       // 上传图片
       const gid = res.data?.gid || res.gid
+      const failed = []
       if (gid) {
         const pendingFiles = uploaderRef.value?.getPendingFiles() || []
         for (const file of pendingFiles) {
-          await imageApi.upload('goods', gid, file).catch(() => {})
+          try {
+            await imageApi.upload('goods', gid, file)
+          } catch (e) {
+            failed.push(file.name)
+          }
         }
+      }
+      if (failed.length > 0) {
+        error.value = `${failed.length} 张图片上传失败（${failed.join('、')}），商品已发布但暂无图片，请删除该商品后重新发布`
+        submitting.value = false
+        return
       }
       router.push('/goods')
     } else {

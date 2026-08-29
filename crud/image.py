@@ -1,3 +1,4 @@
+import asyncio
 import uuid
 import os
 import io
@@ -78,10 +79,21 @@ class ImageService:
         if file.content_type not in ALLOWED_MIME:
             raise HTTPException(status_code=400, detail="仅支持 JPEG/PNG/WebP/GIF 格式")
 
-        # 大小校验（压缩前）
-        content = await file.read()
-        if len(content) > MAX_SIZE:
+        # 大小校验（压缩前）请求头里有 Content-Length 就先看它，超 2MB 直接拒，根本不用读
+        content_length = file.headers.get("content-length")
+        if content_length and int(content_length) > MAX_SIZE:
             raise HTTPException(status_code=400, detail="图片原始大小不能超过 2MB")
+
+        #每次读 1MB，边读边累计，超限立刻停
+        content = b""
+        while True:
+            chunk = await file.read(1024 * 1024)  # 每次读 1MB
+            if not chunk:
+                break
+            content += chunk
+            if len(content) > MAX_SIZE:
+                raise HTTPException(status_code=400, detail="图片原始大小不能超过 2MB")
+
 
         # 数量限制
         result = await db.execute(
@@ -96,7 +108,7 @@ class ImageService:
 
         # 压缩图片
         try:
-            content = _compress_image(content, file.content_type)
+            content = await asyncio.to_thread(_compress_image,content, file.content_type)
         except Exception:
             raise HTTPException(status_code=400, detail="图片处理失败，请确认文件是有效的图片")
 

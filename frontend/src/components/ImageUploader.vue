@@ -82,8 +82,8 @@ function onSelect(e) {
       errorText.value = '只能选择图片文件'
       return
     }
-    if (f.size > 5 * 1024 * 1024) {
-      errorText.value = '单张图片不能超过 5MB'
+    if (f.size > 2 * 1024 * 1024) {
+      errorText.value = '单张图片不能超过 2MB'
       return
     }
     previewFiles.value.push({

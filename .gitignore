@@ -1,0 +1,50 @@
+# 虚拟环境
+venv/
+.venv/
+env/
+.env
+.env.*
+
+# Python缓存文件
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+dist/
+build/
+
+# 日志文件
+*.log
+logs/
+
+# IDE配置文件
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# 数据库文件（如果用SQLite）
+*.db
+*.sqlite3
+
+# 操作系统文件
+.DS_Store
+Thumbs.db
+
+__pycache__/
+*.pyc
+.venv/
+.env
+
+# Agent 本地记忆与配置（不上传）
+.workbuddy/
+.codebuddy/
+
+# 前端依赖与构建产物
+node_modules/
+frontend/dist/
+frontend/dist_old/
+frontend/dist_tmp/
+frontend/dist_tmp2/
+uploads/

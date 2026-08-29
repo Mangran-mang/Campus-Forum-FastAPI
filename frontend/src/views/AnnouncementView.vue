@@ -6,6 +6,19 @@
       <!-- 在这里添加新的公告条目，最新的放在最上面 -->
       <!-- 格式：复制一条 .announce-item，修改日期和内容 -->
       <div class="announce-item card">
+        <div class="announce-date">2026-08-29</div>
+        <h3>论坛环境安全优化</h3>
+        <p>郑财论坛1.18优化版</p>
+        <ul>
+          <li> 增加图片上传的校验</li>
+          <li> 修复了图片上传失败不提示的情况</li>
+          <li> 修复了图片上传会阻塞全站的隐患</li>
+          <li> 修复了图片可能会撑爆服务器内存的隐患</li>
+        </ul>
+        <p>如有问题反馈至3511687086@qq.com</p>
+      </div>
+
+      <div class="announce-item card">
         <div class="announce-date">2026-08-28</div>
         <h3>论坛环境安全优化</h3>
         <p>郑财论坛1.16优化版</p>
