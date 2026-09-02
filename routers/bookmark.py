@@ -5,6 +5,7 @@ from config.database_config import get_database
 from crud.bookmark import BookmarkService
 from schemas.bookmark import BookmarkActionModel
 from tools.dependencies import AccessTokenBearer
+from tools.exceptions import success_response
 
 router = APIRouter(prefix="/api/bookmarks", tags=["收藏管理"])
 
@@ -20,7 +21,8 @@ async def toggle_bookmark(
 ):
     """收藏/取消收藏帖子"""
     result = await bookmark_service.crud_toggle_bookmark(db, bookmark_data.post_id, user_details["user"]["user_uid"])
-    return {"code": 200, "message": result["message"], "data": {"bookmarked": result["bookmarked"]}}
+    return success_response(
+        data={"bookmarked": result["bookmarked"]}, message=result["message"], )
 
 
 @router.get("/my")
@@ -30,4 +32,4 @@ async def get_my_bookmarks(
 ):
     """获取我的收藏列表"""
     bookmarks = await bookmark_service.crud_get_user_bookmarks(db, user_details["user"]["user_uid"])
-    return {"code": 200, "message": "获取成功", "data": bookmarks}
+    return success_response(data=bookmarks, message="获取成功")

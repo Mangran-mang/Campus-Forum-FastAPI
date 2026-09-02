@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     REDIS_PASSWORD: str = ""
     API_KEY: str
     DATABASE_URL: str
+    CORS_ORIGINS: str
 
 Config = Settings()
 """

@@ -8,6 +8,7 @@ from crud.notification import NotificationService
 from models.model_posts import Posts
 from schemas.comments import CommentsCreateModel
 from tools.dependencies import AccessTokenBearer,get_user_by_token
+from tools.exceptions import success_response
 
 router = APIRouter(prefix="/api/comments",tags=["评论管理"])
 
@@ -60,7 +61,7 @@ async def add_new_comment(
                 "content": "有人评论了你的帖子"
             })
 
-    return {"code":200,"message":"添加成功","data":comment}
+    return success_response(data=comment, message="添加成功")
 
 @router.get("/getcomments")
 async def get_comments_list(
@@ -79,7 +80,8 @@ async def get_comments_list(
         page_size
     )
     has_more = total > page * page_size# 暂未用到
-    return {"code":200,"message":f"成功查询到帖子{post_id}","data":comments_list}
+    return success_response(
+        data=comments_list, message=f"成功查询到帖子{post_id}", )
 
 @router.delete("/deletecomment")
 async def delete_comment(
@@ -97,4 +99,6 @@ async def delete_comment(
         user_details["user"]["user_uid"],
         orm_user
     )
-    return {"code":200,"message":f"删除评论状态{result}"}
+    # 原来把 result 这个 bool 拼进 message（"删除评论状态True"），
+    # 现在挪到 data 里，message 只留一句能直接展示的话
+    return success_response(data=result, message="删除成功")

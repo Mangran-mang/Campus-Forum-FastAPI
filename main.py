@@ -1,9 +1,12 @@
+import logging
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, HTTPException, status
+logger = logging.getLogger(__name__)
+from fastapi import FastAPI
+from fastapi.exceptions import RequestValidationError
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
-from starlette.responses import JSONResponse
 
 from routers import (
     user, posts, comments, category, like, bookmark, notification, goods,
@@ -14,37 +17,39 @@ from models import model_base
 import models
 from tools.middleware import register_middleware
 from tools.exceptions import (
-    UserException, PostException, CommentsException, GoodsException,
-    http_exception_handler, db_exception_handler, sqlalchemy_exception_handler,
-    other_exception_handler, post_not_found_error, user_not_found_error,
-    comments_not_found_error, create_exception_handler, AIException,
+    APIException,
+    api_exception_handler, http_exception_handler,
+    request_validation_exception_handler, db_exception_handler,
+    sqlalchemy_exception_handler, other_exception_handler,
 )
-
+from tools.log_config import setup_logging
 
 def register_exception_handler(fapp):
-    fapp.add_exception_handler(HTTPException, http_exception_handler)
+    """
+    注册全局异常处理器
+
+    ## comment
+    所有异常最终都返回统一结构 {"code": 状态码, "message": 描述, "data": None}。
+    注册 APIException 一个就够覆盖它的全部子类（UserException / PostException /
+    CommentsException / GoodsException / AIException）——Starlette 查找 handler
+    时会沿 type(exc).__mro__ 逐级上溯，子类会自动命中父类的处理器。
+    """
+    fapp.add_exception_handler(APIException, api_exception_handler)
+    fapp.add_exception_handler(RequestValidationError, request_validation_exception_handler)
+    # 注册 starlette 的 HTTPException（fastapi 的那个是它的子类，会沿 MRO 上溯命中），
+    # 这样路由没匹配上、405 等框架自己抛的错误也会被统一格式
+    fapp.add_exception_handler(StarletteHTTPException, http_exception_handler)
     fapp.add_exception_handler(IntegrityError, db_exception_handler)
     fapp.add_exception_handler(SQLAlchemyError, sqlalchemy_exception_handler)
     fapp.add_exception_handler(Exception, other_exception_handler)
-    fapp.add_exception_handler(PostException, post_not_found_error)
-    fapp.add_exception_handler(UserException, user_not_found_error)
-    fapp.add_exception_handler(CommentsException, comments_not_found_error)
-    fapp.add_exception_handler(
-        GoodsException, create_exception_handler(
-            status_code=status.HTTP_404_NOT_FOUND, initial_message="商品不存在", ), )
 
-    @app.exception_handler(500)
-    async def internal_server_error(request, exc):
-        return JSONResponse(
-            status_code=500, content={
-                "异常类型": "服务器内部错误",
-                "异常信息": str(exc),
-            }, )
+setup_logging()
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    print("项目已完全启动")
+    # print("项目已完全启动")
+    logger.info("项目已完全启动")
     # await init_db()
     yield
 

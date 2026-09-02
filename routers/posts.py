@@ -13,6 +13,7 @@ from models import User, Notification
 from schemas.posts import PostsCreateModel, PostsUpdateModel
 
 from tools.dependencies import AccessTokenBearer,get_user_by_token
+from tools.exceptions import success_response, APIException, PostException
 
 router = APIRouter(prefix="/api/posts",tags=["帖子管理"])
 
@@ -32,7 +33,7 @@ async def add_new_post(
     """
     post_data.author_uid = user_details["user"]["user_uid"]
     post = await postservice.crud_add_new_post(db,post_data)
-    return {"code":200,"message":"添加成功","data":post}
+    return success_response(data=post, message="添加成功")
 
 @router.get("/get_posts")
 async def get_posts_list(
@@ -58,7 +59,7 @@ async def get_posts_list(
         user_details["user"]["user_uid"]
     )
     has_more = total > page * page_size# 暂未用到
-    return {"code":200,"message":"获取成功","data":post_list}
+    return success_response(data=post_list, message="获取成功")
 
 @router.get("/get_post/{post_id}")
 async def get_post_by_id(
@@ -77,7 +78,7 @@ async def get_post_by_id(
     post.view_count = (post.view_count or 0) + 1
     await db.commit()
     await db.refresh(post, ["author", "category"])
-    return {"code":200,"message":"获取成功","data":post}
+    return success_response(data=post, message="获取成功")
 
 @router.post("/update_post")
 async def update_post(
@@ -91,7 +92,7 @@ async def update_post(
     """
     orm_user:User = await get_user_by_token(token_details=user_details,db=db)
     post = await postservice.crud_update_post(db,post_id,post_data,orm_user)
-    return {"code":200,"message":"更新成功","data":post}
+    return success_response(data=post, message="更新成功")
 
 @router.delete("/delete_post/{post_id}")
 async def delete_post(
@@ -104,7 +105,7 @@ async def delete_post(
     """
     orm_user:User = await get_user_by_token(token_details=user_details,db=db)
     post = await postservice.crud_delete_post(db,post_id,orm_user)
-    return {"code":200,"message":"删除成功","data":post}
+    return success_response(data=post, message="删除成功")
 
 @router.post("/report/{post_id}")
 async def report_post(
@@ -118,17 +119,20 @@ async def report_post(
     """
     reporter_uid = user_details["user"]["user_uid"]
     # 获取被举报的帖子
+    # 这三处原来是 return {"code": 404/400, ...}，HTTP 状态却是 200，
+    # 前端只能读 body 才知道失败。改成 raise 后状态码和 body 一致，
+    # 统一由全局异常处理器转成 {code, message, data}
     post = await postservice.crud_get_post_details_by_id(db, post_id, reporter_uid)
     if not post:
-        return {"code": 404, "message": "帖子不存在"}
+        raise PostException("帖子不存在")
 
     # 不能举报自己的帖子
     if post.author_uid == reporter_uid:
-        return {"code": 400, "message": "不能举报自己的帖子"}
+        raise APIException("不能举报自己的帖子")  # APIException 默认 400
 
     # Redis 去重：24 小时内同一用户不能重复举报同一帖子
     if not await try_report_deduplicate(post_id, reporter_uid):
-        return {"code": 400, "message": "你已举报过该帖子，请勿重复举报"}
+        raise APIException("你已举报过该帖子，请勿重复举报")
 
     reporter_name = user_details["user"].get("user_nickname") or user_details["user"].get("user_email")
 
@@ -154,7 +158,8 @@ async def report_post(
                 for admin in superusers
             ]
             await notificationservice.crud_add_notifications(db, notif_list)
-        return {"code": 200, "message": "举报已受理，AI 审核暂时不可用，已转交管理员处理"}
+        return success_response(
+            message="举报已受理，AI 审核暂时不可用，已转交管理员处理", )
 
     if violated:
         # 违规：硬删帖子（评论经外键 CASCADE 级联删除）
@@ -177,7 +182,9 @@ async def report_post(
             "post_id": None,
             "content": f"你举报的帖子「{post_title}」经 AI 审核确认违规，已删除",
         })
-        return {"code": 200, "message": f"AI 审核判定违规（{viol_type}），帖子已删除", "data": review_result}
+        return success_response(
+            data=review_result,
+            message=f"AI 审核判定违规（{viol_type}），帖子已删除", )
 
     # 未违规：保留帖子，通知举报人
     await notificationservice.crud_add_notification(db, {
@@ -187,4 +194,5 @@ async def report_post(
         "post_id": post_id,
         "content": f"你举报的帖子「{post.title}」经 AI 审核未发现违规内容，帖子已保留",
     })
-    return {"code": 200, "message": "AI 审核未发现违规内容，帖子已保留", "data": review_result}
+    return success_response(
+        data=review_result, message="AI 审核未发现违规内容，帖子已保留", )

@@ -5,6 +5,7 @@ from config.database_config import get_database
 from crud.notification import NotificationService
 from schemas.notification import NotificationCreateModel
 from tools.dependencies import AccessTokenBearer, UserChecker
+from tools.exceptions import success_response
 
 router = APIRouter(prefix="/api/notifications", tags=["通知管理"])
 
@@ -26,7 +27,8 @@ async def get_notifications(
     total, notifications = await notification_service.crud_get_user_notifications(
         db, user_uid, page, page_size, unread_only
     )
-    return {"code": 200, "message": "获取成功", "data": {"total": total, "notifications": notifications}}
+    return success_response(
+        data={"total": total, "notifications": notifications}, message="获取成功", )
 
 
 @router.get("/unread_count")
@@ -36,7 +38,7 @@ async def get_unread_count(
 ):
     """获取未读通知数"""
     count = await notification_service.crud_get_unread_count(db, user_details["user"]["user_uid"])
-    return {"code": 200, "message": "获取成功", "data": {"unread_count": count}}
+    return success_response(data={"unread_count": count}, message="获取成功")
 
 
 @router.post("/read/{notif_id}")
@@ -47,7 +49,7 @@ async def mark_as_read(
 ):
     """标记单条通知为已读"""
     await notification_service.crud_mark_as_read(db, notif_id, user_details["user"]["user_uid"])
-    return {"code": 200, "message": "标记成功"}
+    return success_response(message="标记成功")
 
 
 @router.post("/read_all")
@@ -57,7 +59,7 @@ async def mark_all_as_read(
 ):
     """标记所有通知为已读"""
     await notification_service.crud_mark_all_as_read(db, user_details["user"]["user_uid"])
-    return {"code": 200, "message": "全部标记已读"}
+    return success_response(message="全部标记已读")
 
 
 @router.post("/send")
@@ -68,4 +70,4 @@ async def send_system_notification(
 ):
     """发送系统通知（仅管理员）"""
     notif = await notification_service.crud_add_notification(db, notif_data.model_dump())
-    return {"code": 200, "message": "发送成功", "data": notif}
+    return success_response(data=notif, message="发送成功")

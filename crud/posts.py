@@ -98,7 +98,7 @@ class PostService:
         post_detail = result.scalar_one_or_none()
         # 先检查有没有这个帖子
         if not post_detail:
-            raise PostException("帖子异常","不存在当前查找的帖子")
+            raise PostException("不存在当前查找的帖子")
 
         if is_superuser or post_detail.is_public or post_detail.author_uid == current_user_uid:
             return post_detail

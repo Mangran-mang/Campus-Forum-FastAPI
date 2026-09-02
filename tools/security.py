@@ -1,5 +1,6 @@
 import logging
 
+logger = logging.getLogger(__name__)
 from passlib.context import CryptContext# 密码哈希库
 from datetime import timedelta, datetime, timezone
 import jwt
@@ -58,5 +59,5 @@ def decode_token(token:str):
         )
         return token_data
     except jwt.PyJWTError as e:
-        logging.exception(e)
+        logger.exception(e)
         return None

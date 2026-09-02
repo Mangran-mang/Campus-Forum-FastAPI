@@ -1,3 +1,5 @@
+import logging
+
 from alembic.util import status
 from fastapi import FastAPI,status
 from fastapi.requests import Request
@@ -5,6 +7,7 @@ import time
 from starlette.middleware.cors import CORSMiddleware
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from config.config import Config
 
 def register_middleware(app: FastAPI):
     """
@@ -19,12 +22,12 @@ def register_middleware(app: FastAPI):
         # 执行完会拿到接口返回的 response
         response = await call_next(request)
         message = f"{request.client.host} {request.method} {request.url.path} {response.status_code}"
-        # print(message)
+        logging.getLogger("app.http").info(message)
         return  response
 
     app.add_middleware(  # 设置app可被跨域访问
         CORSMiddleware,  # 中间件类 跨域中间件
-        allow_origins=["*"],  # *代表所有，允许所有源访问
+        allow_origins=[o.strip() for o in  Config.CORS_ORIGINS.split(",")],  # *代表所有，允许所有源访问，这里需要换成自己的域名
         allow_credentials=True,  # 允许携带cookie
         allow_methods=["*"],  # 允许所有请求方法
         allow_headers=["*"],  # 允许所有请求头

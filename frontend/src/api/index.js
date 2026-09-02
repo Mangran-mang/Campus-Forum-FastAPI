@@ -59,8 +59,9 @@ async function tryRefresh() {
       },
     })
     const data = await res.json()
-    if (data.access_token) {
-      saveTokens(data.access_token)
+    // 后端响应已统一信封，token 在 data 里；刷新失败时是 {code:400,...}，走 false
+    if (data.code === 200 && data.data?.access_token) {
+      saveTokens(data.data.access_token)
       return true
     }
     return false
@@ -79,9 +80,10 @@ export const userApi = {
       body: JSON.stringify(data),
     })
     const result = await res.json()
-    if (result.access_token) {
-      saveTokens(result.access_token, result.refresh_token)
-      localStorage.setItem('user_info', JSON.stringify(result.user))
+    // 统一信封后 token/user 都在 data 里（原来平铺在顶层）
+    if (result.code === 200 && result.data) {
+      saveTokens(result.data.access_token, result.data.refresh_token)
+      localStorage.setItem('user_info', JSON.stringify(result.data.user))
     }
     return result
   },

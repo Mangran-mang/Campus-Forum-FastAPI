@@ -39,7 +39,7 @@ async function handleLogin() {
   loading.value = true
   try {
     const res = await userApi.login({ email: email.value, password: password.value })
-    if (res.access_token) {
+    if (res.code === 200) {
       window.dispatchEvent(new Event('auth-change'))
       router.push('/posts')
     } else {

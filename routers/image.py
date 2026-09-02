@@ -4,6 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from config.database_config import get_database
 from crud.image import ImageService
 from tools.dependencies import AccessTokenBearer
+from tools.exceptions import success_response
 
 access_token_bearer = AccessTokenBearer()
 
@@ -22,7 +23,10 @@ async def upload_image(
     image = await ImageService.upload_image(
         db, file, target_type, target_id, author_uid
     )
-    return {"code": 200, "data": {"id": image.id, "filename": image.filename, "target_type": image.target_type}}
+    return success_response(
+        data={"id": image.id, "filename": image.filename, "target_type": image.target_type},
+        message="上传成功",
+    )
 
 
 @router.get("/images/{target_type}/{target_id}")
@@ -32,10 +36,10 @@ async def get_images(
     db: AsyncSession = Depends(get_database),
 ):
     images = await ImageService.get_images(db, target_type, target_id)
-    return {
-        "code": 200,
-        "data": [{"id": img.id, "filename": img.filename, "target_type": img.target_type} for img in images],
-    }
+    return success_response(
+        data=[{"id": img.id, "filename": img.filename, "target_type": img.target_type} for img in images],
+        message="获取成功",
+    )
 
 
 @router.delete("/images/{image_id}")
@@ -46,4 +50,4 @@ async def delete_image(
 ):
     author_uid = user_details["user"]["user_uid"]
     await ImageService.delete_image(db, image_id, author_uid)
-    return {"code": 200, "message": "图片已删除"}
+    return success_response(message="图片已删除")

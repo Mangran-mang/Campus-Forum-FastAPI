@@ -1,5 +1,8 @@
 from redis.asyncio import Redis
 from config.config import Config
+import logging
+
+logger = logging.getLogger(__name__)
 
 JTI_EXPIRY = 3600# JTI就是JWT的ID
 
@@ -23,18 +26,19 @@ async def add_jti_to_blocklist(jti: str,expiry:int=JTI_EXPIRY):
     try:
         await token_blocklist.set(name=jti, value="", ex=expiry)
     except Exception as e:
-        print(f"添加缓存失败{e}")
+        logger.warning(f"JTI添加到黑名单失败{e}")
 
 async def is_jti_in_blocklist(jti: str) -> bool:
     """
     检查JTI是否在黑名单中
     并返回True或False
+    Redis 不可用时降级放行，风险：已拉黑 token 在故障窗口内可用
     """
     try:
         jti = await token_blocklist.get(name=jti)
         return jti is not None
     except Exception as e:
-        print(f"获取缓存失败{e}")
+        logger.warning(f"检查黑名单缓存失败{e}")
         return False
 
 async def try_report_deduplicate(post_id: int, user_uid: str, ttl: int = 86400) -> bool:
@@ -50,5 +54,5 @@ async def try_report_deduplicate(post_id: int, user_uid: str, ttl: int = 86400) 
         result = await token_blocklist.set(name=key, value="1", nx=True, ex=ttl)
         return bool(result)
     except Exception as e:
-        print(f"举报去重失败{e}")
+        logger.warning(f"检查举报去重缓存失败{e}")
         return True

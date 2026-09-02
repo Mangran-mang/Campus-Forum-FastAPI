@@ -1016,6 +1016,58 @@ git config --global --list
 
 **后续所有更新**：只循环 `git add → git commit → git pull → git push` 四步即可。
 
+
+
+#### github CLI的使用
+
+**① 登录（首次）**
+
+```bash
+gh auth login
+```
+
+交互式：选 **GitHub.com** → **HTTPS** → 用浏览器登录（或选粘贴 Token）。
+
+> 注意：`gh` 要连 github.com 才能用，你这台机器之前访问 github 需要代理，登录和上传时记得先开代理。
+
+**② 建仓库（如果还没有）**
+
+```bash
+cd 目标路径
+gh repo create 名 --public --description "描述" --source . --push
+```
+
+这条会在 GitHub 建一个公开仓库 `tomato-clock`，并把项目代码推上去。
+
+**③ 发布 Release 并上传便携版**（核心操作）
+
+```bash
+gh release create 版本 "路径" --title "名" --notes "描述"
+```
+
+- 后面跟的就是要上传的 exe（71MB，GitHub 单文件上限 2GB，没问题）；
+- `--notes` 写发行说明，也可以 `--notes-file notes.md` 从文件读。
+
+**以后更新版本**：改完代码重新 `npm run build` 出新的 exe，然后：
+
+```bash
+gh release create 版本号 "路径" --title "name" --notes "更新说明"
+```
+
+**如果 Release 已经存在**，只想补传文件：
+
+```bash
+gh release upload 版本号 "名字"
+```
+
+**查看/管理**
+
+```bash
+gh release list        # 列出所有 Release
+gh release view v1.0.1 # 查看某个
+gh release delete v1.0.1 --yes   # 删除（慎用）
+```
+
 ## 十三、路由挂载及生命周期
 
 为了模块和业务的分工清晰，我们通常把路由分开写

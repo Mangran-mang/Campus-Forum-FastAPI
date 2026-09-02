@@ -13,6 +13,7 @@ __pycache__/
 *.egg-info/
 dist/
 build/
+logs/
 
 # 日志文件
 *.log
@@ -23,6 +24,7 @@ logs/
 .idea/
 *.swp
 *.swo
+alembic.ini
 
 # 数据库文件（如果用SQLite）
 *.db

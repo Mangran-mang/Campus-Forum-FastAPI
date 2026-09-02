@@ -5,6 +5,7 @@ from config.database_config import get_database
 from crud.message import MessageService
 from schemas.message import MessageCreateModel
 from tools.dependencies import AccessTokenBearer
+from tools.exceptions import success_response
 
 router = APIRouter(prefix="/api/messages", tags=["私信管理"])
 
@@ -59,7 +60,7 @@ async def get_or_create_conversation(
     """获取或创建与某用户的会话（幂等：已存在则直接返回）"""
     current_uid = user_details["user"]["user_uid"]
     conv = await message_service.crud_get_or_create_conversation(db, current_uid, other_uid)
-    return {"code": 200, "message": "获取成功", "data": _conversation_brief(conv)}
+    return success_response(data=_conversation_brief(conv), message="获取成功")
 
 
 @router.get("/conversations")
@@ -75,7 +76,8 @@ async def get_conversations(
         db, current_uid, page, page_size
     )
     data = [_conversation_brief(c) for c in conversations]
-    return {"code": 200, "message": "获取成功", "data": {"total": total, "conversations": data}}
+    return success_response(
+        data={"total": total, "conversations": data}, message="获取成功", )
 
 
 @router.get("/conversations/{conv_id}/messages")
@@ -92,11 +94,10 @@ async def get_messages(
         db, conv_id, current_uid, page, page_size
     )
     data = [_message_brief(m) for m in messages]
-    return {
-        "code": 200,
-        "message": "获取成功",
-        "data": {"total": total, "messages": data, "current_uid": current_uid},
-    }
+    return success_response(
+        data={"total": total, "messages": data, "current_uid": current_uid},
+        message="获取成功",
+    )
 
 
 @router.post("/conversations/{conv_id}/messages")
@@ -111,7 +112,7 @@ async def send_message(
     msg = await message_service.crud_add_message(
         db, conv_id, current_uid, message_data.content
     )
-    return {"code": 200, "message": "发送成功", "data": _message_brief(msg)}
+    return success_response(data=_message_brief(msg), message="发送成功")
 
 
 @router.get("/users/search")
@@ -124,4 +125,4 @@ async def search_users(
     current_uid = user_details["user"]["user_uid"]
     users = await message_service.crud_search_users(db, keyword, exclude_uid=current_uid)
     data = [_user_brief(u) for u in users]
-    return {"code": 200, "message": "获取成功", "data": data}
+    return success_response(data=data, message="获取成功")

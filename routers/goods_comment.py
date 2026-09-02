@@ -8,6 +8,7 @@ from crud.notification import NotificationService
 from models.model_goods import Goods
 from schemas.goods_comment import GoodsCommentCreateModel
 from tools.dependencies import AccessTokenBearer, get_user_by_token
+from tools.exceptions import success_response
 
 router = APIRouter(prefix="/api/goods", tags=["商品评论"])
 
@@ -54,7 +55,7 @@ async def add_comment(
                 "content": "有人评论了你的商品",
             })
 
-    return {"code": 200, "message": "评论成功", "data": comment}
+    return success_response(data=comment, message="评论成功")
 
 
 @router.get("/{goods_gid}/comments")
@@ -68,7 +69,9 @@ async def get_comments(
     total, comments_list = await comment_service.crud_get_comments_by_goods(
         db, goods_gid, page, page_size
     )
-    return {"code": 200, "message": "获取成功", "data": comments_list, "total": total}
+    # total 原来是平级字段，现在收进 data，前端改成读 res.data.total
+    return success_response(
+        data={"list": comments_list, "total": total}, message="获取成功", )
 
 
 @router.delete("/comments/{comment_id}")
@@ -82,4 +85,5 @@ async def delete_comment(
     result = await comment_service.crud_delete_comment(
         db, comment_id, user_details["user"]["user_uid"], orm_user
     )
-    return {"code": 200, "message": f"删除状态: {result}"}
+    # 原来把 result 这个 bool 拼进 message（"删除状态: True"），挪到 data 里
+    return success_response(data=result, message="删除成功")

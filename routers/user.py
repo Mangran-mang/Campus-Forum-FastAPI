@@ -9,11 +9,11 @@ from config.database_config import get_database
 from crud.user import UserService
 from crud.token import TokenService
 
-from fastapi.responses import JSONResponse
 from schemas.user import (
     UserCreateModel, UserUpdateModel, UserLoginModel, UserOutModel,
 )
 from tools import security
+from tools.exceptions import success_response, UserException
 from tools.dependencies import (
     AccessTokenBearer, RefreshTokenBearer, get_user_by_token, UserChecker,
 )
@@ -38,11 +38,7 @@ async def get_current_user(
     获取当前用户（需登录）
     """
     user_out = UserOutModel.model_validate(user)
-    return {
-        "code": 200,
-        "message": "获取成功",
-        "data": user_out
-    }
+    return success_response(data=user_out, message="获取成功")
 
 
 @router.get("/all")
@@ -54,11 +50,7 @@ async def get_all_users(
     # print(f"查询者信息为{user_details}")
     users = await user_service.crud_get_all_users(db)
     users_out = [UserOutModel.model_validate(user) for user in users]
-    return {
-        "code": 200,
-        "message": "获取成功",
-        "data": users_out
-    }
+    return success_response(data=users_out, message="获取成功")
 
 
 @router.post("/add")
@@ -72,12 +64,7 @@ async def add_new_user(
 
     user = await user_service.crud_add_new_user(db, user_data)
     user_out = UserOutModel.model_validate(user)
-
-    return {
-        "code": 200,
-        "message": "添加成功",
-        "data": user_out
-    }
+    return success_response(data=user_out, message="添加成功")
 
 
 @router.get("/get/{email}")
@@ -94,16 +81,9 @@ async def get_user_by_email(
     user = await user_service.crud_get_user_by_email(db, email)
     if user:
         user_out = UserOutModel.model_validate(user)
-        return {
-            "code": 200,
-            "message": "获取成功",
-            "data": user_out
-        }
+        return success_response(data=user_out, message="获取成功")
     else:
-        return {
-            "code": 404,
-            "message": "用户不存在"
-        }
+        raise UserException()  # 原先是 return {"code":404,...}，HTTP 却是 200
 
 
 @router.post("/update")
@@ -125,16 +105,9 @@ async def update_user(
     new_user = await user_service.crud_update_user(db, user_data.email, user_data)
     new_user_out = UserOutModel.model_validate(new_user)
     if new_user:
-        return {
-            "code": 200,
-            "message": "更新成功",
-            "data": new_user_out
-        }
+        return success_response(data=new_user_out, message="更新成功")
     else:
-        return {
-            "code": 404,
-            "message": "用户不存在"
-        }
+        raise UserException()  # 原先是 return {"code":404,...}，HTTP 却是 200
 
 
 @router.delete("/delete/{email}")
@@ -154,15 +127,9 @@ async def delete_user(
 
     result = await user_service.crud_delete_user(db, email)
     if result:
-        return {
-            "code": 200,
-            "message": "删除成功"
-        }
+        return success_response(message="删除成功")
     else:
-        return {
-            "code": 404,
-            "message": "用户不存在"
-        }
+        raise UserException()  # 原先是 return {"code":404,...}，HTTP 却是 200
 
 
 @router.post("/login")
@@ -204,9 +171,10 @@ async def login_user(
                 await token_service.crud_update_token(db, refresh_token, refresh_token_details)
             # =========================================
 
-            return JSONResponse(
-                content={
-                    "message": "登录成功",
+            # 注意：access_token / refresh_token / user 全部放进 data，
+            # 原来平铺在顶层，前端适配时要改成读 res.data.xxx
+            return success_response(
+                data={
                     "access_token": access_token,
                     "refresh_token": refresh_token,
                     "user": {
@@ -214,7 +182,9 @@ async def login_user(
                         "uid": str(user.uid),
                         "is_superuser": user.is_superuser,
                     }
-                }, )
+                },
+                message="登录成功",
+            )
         else:
             raise HTTPException(
                 status_code=401, detail="邮箱或密码错误", )
@@ -248,11 +218,8 @@ async def refresh_token(
 
         new_access_token = security.create_access_token(
             user_data=token_data["user"], )
-        return JSONResponse(
-            content={
-                "message": "刷新成功",
-                "access_token": new_access_token
-            }, )
+        return success_response(
+            data={"access_token": new_access_token}, message="刷新成功", )
 
 
 @router.post("/logout")
@@ -280,7 +247,4 @@ async def logout_user(
         await db.delete(orm_token)
         await db.commit()
 
-    return JSONResponse(
-        content={
-            "message": "登出成功"
-        }, status_code=status.HTTP_200_OK, )
+    return success_response(message="登出成功")

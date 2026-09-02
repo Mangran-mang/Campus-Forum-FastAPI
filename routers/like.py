@@ -8,6 +8,7 @@ from crud.notification import NotificationService
 from models.model_posts import Posts
 from schemas.like import LikeActionModel
 from tools.dependencies import AccessTokenBearer
+from tools.exceptions import success_response
 
 router = APIRouter(prefix="/api/likes", tags=["点赞管理"])
 
@@ -40,7 +41,8 @@ async def toggle_like(
                 "content": "有人点赞了你的帖子"
             })
 
-    return {"code": 200, "message": result["message"], "data": {"liked": result["liked"]}}
+    return success_response(
+        data={"liked": result["liked"]}, message=result["message"], )
 
 
 @router.get("/count/{post_id}")
@@ -50,7 +52,7 @@ async def get_like_count(
 ):
     """获取帖子点赞数（公开）"""
     count = await like_service.crud_get_like_count(db, post_id)
-    return {"code": 200, "message": "获取成功", "data": {"count": count}}
+    return success_response(data={"count": count}, message="获取成功")
 
 
 @router.get("/check/{post_id}")
@@ -61,4 +63,4 @@ async def check_user_liked(
 ):
     """检查当前用户是否已点赞"""
     liked = await like_service.crud_check_user_liked(db, post_id, user_details["user"]["user_uid"])
-    return {"code": 200, "message": "获取成功", "data": {"liked": liked}}
+    return success_response(data={"liked": liked}, message="获取成功")

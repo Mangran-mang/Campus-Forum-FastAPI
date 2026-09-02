@@ -6,6 +6,7 @@ from crud.goods import GoodsService
 from models.model_user import User
 from schemas.goods import GoodsCreatePyModel, GoodsUpdatePyModel
 from tools.dependencies import AccessTokenBearer, get_user_by_token
+from tools.exceptions import success_response
 
 access_token_bearer = AccessTokenBearer()
 
@@ -21,8 +22,9 @@ async def add_goods(
         goods: GoodsCreatePyModel, db: AsyncSession = Depends(get_database),
         user_details=Depends(access_token_bearer), ):
     author_uid = user_details["user"]["user_uid"]
-    return await service.add_goods(
+    goods = await service.add_goods(
         db, goods, author_uid, )
+    return success_response(data=goods, message="添加成功")
 
 
 @router.get(
@@ -30,8 +32,9 @@ async def add_goods(
 async def get_all_goods(
         db: AsyncSession = Depends(
             get_database, ), ):
-    return await service.get_all_goods(
+    goods_list = await service.get_all_goods(
         db, )
+    return success_response(data=goods_list, message="获取成功")
 
 
 @router.get(
@@ -43,7 +46,7 @@ async def get_goods_by_gid(
     if not result:
         raise HTTPException(
             status_code=404, detail='商品不存在', )
-    return result
+    return success_response(data=result, message="获取成功")
 
 
 @router.put(
@@ -53,8 +56,9 @@ async def update_goods(
         db: AsyncSession = Depends(get_database, ),
         user_details=Depends(access_token_bearer), ):
     orm_user: User = await get_user_by_token(token_details=user_details, db=db)
-    return await service.update_goods(
+    goods = await service.update_goods(
         db, gid, goods, orm_user, )
+    return success_response(data=goods, message="更新成功")
 
 
 @router.delete(
@@ -65,6 +69,4 @@ async def delete_goods(
     orm_user: User = await get_user_by_token(token_details=user_details, db=db)
     await service.delete_goods(
         db, gid, orm_user, )
-    return {
-        'message': '删除成功'
-    }
+    return success_response(message="删除成功")
