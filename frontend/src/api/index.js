@@ -47,8 +47,20 @@ async function request(path, options = {}) {
   return res.json()
 }
 
-// 尝试刷新 token
+// 尝试刷新 token（单飞模式：同一时刻只允许一个刷新请求在飞）
+// ## 为什么单飞：access 过期瞬间页面常有多个并发请求同时 403，
+// 若各自发起刷新，会拿同一把旧 refresh 互踩——轮换后第一个成功、
+// 其余全部 401 被登出。共享同一个 promise，让所有请求等同一个刷新结果。
+let refreshPromise = null
 async function tryRefresh() {
+  if (refreshPromise) return refreshPromise
+  refreshPromise = doRefresh().finally(() => {
+    refreshPromise = null
+  })
+  return refreshPromise
+}
+
+async function doRefresh() {
   try {
     const refreshToken = getRefreshToken()
     const res = await fetch(`${BASE}/user/refresh_token`, {
@@ -61,7 +73,9 @@ async function tryRefresh() {
     const data = await res.json()
     // 后端响应已统一信封，token 在 data 里；刷新失败时是 {code:400,...}，走 false
     if (data.code === 200 && data.data?.access_token) {
-      saveTokens(data.data.access_token)
+      // 后端已做 refresh 轮换：必须把新 refresh 也存回去替换旧的，
+      // 否则下次刷新仍拿已被轮换作废的旧 token，会 401 死循环
+      saveTokens(data.data.access_token, data.data.refresh_token)
       return true
     }
     return false

@@ -1,4 +1,5 @@
 import logging
+import hashlib
 
 logger = logging.getLogger(__name__)
 from passlib.context import CryptContext# 密码哈希库
@@ -61,3 +62,19 @@ def decode_token(token:str):
     except jwt.PyJWTError as e:
         logger.exception(e)
         return None
+
+def hash_token(token: str) -> str:
+    """
+    对 refresh token 做单向 sha256 哈希，只用于「落库 + 比对」，绝不回传给前端
+
+    ## 为什么不用 bcrypt
+    bcrypt 的慢哈希是给低熵密码（人想出来的）防暴力破解的；
+    JWT 是 256 位高熵随机串，暴力破解不现实，快哈希即可（GitHub 存个人访问令牌同理）。
+
+    ## 为什么不需要盐
+    盐防的是「相同低熵密码跨用户撞库」，而每个 token 的 jti 都唯一，天然高熵。
+
+    ## 为什么验证不需要"解密"
+    单向函数同输入必同输出：客户端带原始 token 来，服务端再算一次哈希去比对库里那份即可。
+    """
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()

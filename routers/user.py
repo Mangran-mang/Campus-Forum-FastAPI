@@ -199,9 +199,15 @@ async def refresh_token(
         token_data=Depends(refresh_token_bearer),
         db: AsyncSession = Depends(get_database), ):
     """
-    使用刷新令牌来实现访问令牌的更新
-    过期的话返回异常，否则就更新访问令牌并返回成功的信息
-    本函数只接收刷新令牌
+    使用刷新令牌来实现访问令牌的更新（refresh token 轮换）
+
+    ## 轮换逻辑（2026-09-04 起）
+    校验通过后不只发新 access，同时签发一把新 refresh 并覆盖库行：
+    - 旧 refresh 的作废不靠额外拉黑——库行被覆盖成新哈希后，
+      旧 token 下次再来哈希比对必然失败（单行模型下覆盖即作废）
+    - 每把 refresh 只能使用一次 → 泄露的凭证只有一次利用窗口
+    - 新 refresh 重新给 2 天 → 轮换自带滑动续期，活跃用户不被踢
+    - 代价：双标签页同时刷新时后到者会 401，前端收到后引导重新登录即可（不做宽容窗口）
     """
     token_timestamp = token_data["exp"]  # 拿到令牌过期时间
     # timestamp个方法会把 naive 时间按本地时区解释再转成 UTC 时间戳
@@ -216,10 +222,32 @@ async def refresh_token(
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST, detail="刷新令牌不存在", )
 
+        # 库中存的是 sha256 哈希，把用户交上来的原始 token 再哈希一次比对：
+        # - 只有「当前存库这把」能过，被轮换/新登录顶掉的旧 token 哈希对不上，直接拒绝
+        # - 之前只查「有没有这一行」不比对 token，等于谁拿到旧 refresh 都能刷，这是顺手修掉的隐患
+        if security.hash_token(token_data["raw_token"]) != orm_token.refresh_token:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED, detail="刷新令牌已失效,请重新登录", )
+
         new_access_token = security.create_access_token(
             user_data=token_data["user"], )
+        # ============ 轮换：签发新 refresh 并覆盖库行 ============
+        # 旧 refresh 此刻即作废（哈希比对不再通过），前端必须保存返回的新 refresh
+        new_refresh_token = security.create_access_token(
+            user_data=token_data["user"],
+            expiry=timedelta(days=2),
+            refresh=True,
+        )
+        new_refresh_details = security.decode_token(new_refresh_token)
+        await token_service.crud_update_token(db, new_refresh_token, new_refresh_details)
+        # =====================================================
         return success_response(
-            data={"access_token": new_access_token}, message="刷新成功", )
+            data={
+                "access_token": new_access_token,
+                "refresh_token": new_refresh_token,
+            },
+            message="刷新成功",
+        )
 
 
 @router.post("/logout")
@@ -236,14 +264,17 @@ async def logout_user(
     await add_jti_to_blocklist(
         token_data["jti"], expiry=token_data["exp"] - now_ts, )
 
-    # ② 从数据库找出该用户的 refresh token，拉黑它的 jti 并删除记录
+    # ② 从数据库找出该用户的 refresh token 记录，拉黑其 jti 并删除记录
+    # 库里 refresh_token 已是哈希，解不出 jti，所以登出直接用 jti 列 + expire_at 列
     orm_token = await token_service.crud_get_token_by_user_uid(
         db, token_data["user"]["user_uid"], )
     if orm_token:
-        refresh_data = security.decode_token(orm_token.refresh_token)
-        if refresh_data and refresh_data.get("jti"):
+        if orm_token.jti:
+            # expire_at 是 naive datetime，.timestamp() 按本地时区解释，
+            # 与原存的 UTC 时间戳一致，用它算剩余存活秒数
+            expire_ts = int(orm_token.expire_at.timestamp())
             await add_jti_to_blocklist(
-                refresh_data["jti"], expiry=refresh_data["exp"] - now_ts, )
+                orm_token.jti, expiry=max(expire_ts - now_ts, 1), )
         await db.delete(orm_token)
         await db.commit()
 

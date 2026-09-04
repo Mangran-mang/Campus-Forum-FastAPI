@@ -53,6 +53,10 @@ class TokenBearer(HTTPBearer):
                                 }
                     )
 
+                # 把原始 token 塞进返回字典：刷新接口要拿它做 sha256 比对（库里只存哈希）
+                # 访问令牌场景无副作用，各调用方都只读 user/jti/exp 等固定键
+                token_data["raw_token"] = token
+
                 return token_data
 
             else:

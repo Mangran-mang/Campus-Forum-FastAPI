@@ -6,6 +6,17 @@
       <!-- 在这里添加新的公告条目，最新的放在最上面 -->
       <!-- 格式：复制一条 .announce-item，修改日期和内容 -->
       <div class="announce-item card">
+        <div class="announce-date">2026-09-3</div>
+        <h3>论坛环境安全优化</h3>
+        <p>郑财论坛1.24优化版</p>
+        <ul>
+          <li> token改为哈希后存放</li>
+          <li> 增强用户信息安全性</li>
+        </ul>
+        <p>如有问题反馈至3511687086@qq.com</p>
+      </div>
+
+      <div class="announce-item card">
         <div class="announce-date">2026-09-2</div>
         <h3>论坛环境安全优化</h3>
         <p>郑财论坛1.2优化版</p>

@@ -20,7 +20,8 @@ class Token(Base):
         nullable= False,
         comment="用户id"
     )
-    refresh_token: Mapped[str] = mapped_column(String(512),nullable= False,comment="刷新令牌")
+    refresh_token: Mapped[str] = mapped_column(String(512),nullable= False,comment="刷新令牌的sha256哈希,单向不可逆,仅供比对")
+    jti: Mapped[str] = mapped_column(String(64),nullable= False,comment="刷新令牌的jti,登出时用来拉黑")
     expire_at: Mapped[datetime] = mapped_column(DateTime,default=func.now(),nullable= False,comment="过期时间")
 
     user: Mapped["User"] = relationship("User",back_populates="token",uselist= False)# 一对一关系配置
