@@ -1,4 +1,5 @@
 import asyncio
+import logging
 import uuid
 import os
 import io
@@ -9,7 +10,9 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import UploadFile, HTTPException
 
+from models.model_goods import Goods
 from models.model_image import Image
+from models.model_posts import Posts
 
 ALLOWED_MIME = {"image/jpeg", "image/png", "image/webp", "image/gif"}
 MAX_SIZE = 2 * 1024 * 1024       # 单张最大 2MB（原始文件）
@@ -76,6 +79,52 @@ def _compress_image(content: bytes, content_type: str) -> bytes:
     return out.getvalue()# 把 out 里存的 bytes 取出来
 
 
+async def _ensure_can_upload(
+    db: AsyncSession, target_type: str, target_id: str, author_uid: str
+) -> None:
+    """校验"目标存在、且当前用户是它的作者"
+
+    ## comment
+    ### 补的是哪个漏洞（2026-09-21）
+    upload_image 原来只检查了 target_type 白名单，**没有检查目标归属** ——
+    任何登录用户都能给【别人的】帖子/商品传图；也能给一个根本不存在的
+    target_id 传，造出一堆永远没人引用的脏数据。
+    这里用一次查询同时解决两件事：目标存不存在 + 你有没有权限。
+
+    ### 为什么把 target_type 的判断也搬到这里
+    原来那句白名单检查写在【读完整个文件、还做完了压缩】之后 ——
+    只要传个 2MB 的图，就能让对方白白做一次 PIL 解码 + 缩放 + 重编码。
+    这类"能不能做"的判断属于【早失败】，必须在读文件之前。
+
+    ### 为什么 target_id 要转 int
+    target_id 是 String(36)：为了一个字段同时兼容帖子（整数 id）和商品（36 位 UUID）。
+    所以查帖子时必须自己转回整数，转不了说明前端传错了，直接 400。
+
+    ### 为什么先只放开"作者本人"
+    管理员管图是另一条路径（delete_image），这里保持权限判断单一。
+    将来要放开管理员，给这个函数加一个 is_superuser 参数即可。
+    """
+    if target_type == "post":
+        try:
+            post_id = int(target_id)
+        except (TypeError, ValueError):
+            raise HTTPException(status_code=400, detail="帖子 id 必须是数字")
+        stmt = select(Posts.author_uid).where(Posts.id == post_id)
+    elif target_type == "goods":
+        stmt = select(Goods.author_uid).where(Goods.gid == target_id)
+    else:
+        # 同时在防目录穿越：target_type 直接参与磁盘路径拼接
+        # （subdir = BASE_UPLOAD_DIR / target_type），不拦住就能写任意子目录
+        raise HTTPException(status_code=400, detail="目标类型只允许 post 或 goods")
+
+    result = await db.execute(stmt)
+    owner_uid = result.scalar_one_or_none()
+    if owner_uid is None:
+        raise HTTPException(status_code=404, detail="目标不存在")
+    if owner_uid != author_uid:
+        raise HTTPException(status_code=403, detail="只能给自己的内容上传图片")
+
+
 class ImageService:
 
     @staticmethod
@@ -86,6 +135,10 @@ class ImageService:
         target_id: str,
         author_uid: str,
     ) -> Image:
+        # 【前置校验】目标类型 + 目标存在 + 归属权限，全部放在读文件之前
+        # （原来这些检查散在后面，会让人用一个大文件白耗一次图片解码 + 压缩）
+        await _ensure_can_upload(db, target_type, target_id, author_uid)
+
         # MIME 校验
         if file.content_type not in ALLOWED_MIME:
             raise HTTPException(status_code=400, detail="仅支持 JPEG/PNG/WebP/GIF 格式")
@@ -127,9 +180,9 @@ class ImageService:
         ext = os.path.splitext(file.filename or ".jpg")[1] or ".jpg"
         # 将文件名拆分成 主文件名 和 扩展名 两部分，返回一个元组
         filename = f"{uuid.uuid4().hex}{ext}"
-        if target_type != "post" and target_type != "goods":# 加了一个白名单,也可以在orm层用枚举来限制
-            raise HTTPException(status_code=400, detail="目标文件夹禁止上传图片")
-        subdir = BASE_UPLOAD_DIR / target_type#target_type是目标路径,遗留问题3
+        # 注：原来这里有一句 target_type 白名单检查（target_type != "post" and != "goods"），
+        # 已上移到函数开头的 _ensure_can_upload 里 —— 它属于前置校验，不该等到这里才做。
+        subdir = BASE_UPLOAD_DIR / target_type
         # /是运算符重载，而Path类把/定义成了拼接路径
         # Path("uploads") / "post"等价于旧写法 os.path.join("uploads", "post")
         subdir.mkdir(parents=True, exist_ok=True)
@@ -166,6 +219,51 @@ class ImageService:
             .order_by(Image.sort_order)
         )
         return list(result.scalars().all())
+
+    @staticmethod
+    async def delete_images_by_target(
+        db: AsyncSession,
+        target_type: str,
+        target_id: str,
+    ) -> int:
+        """删除某个目标下的所有图片（数据库记录 + 磁盘文件），返回删除条数
+
+        ## comment
+        ### 为什么必须有这个函数
+        images 表用的是【多态软关联】（target_type + target_id 两个普通字段），
+        **没有外键** —— 所以删帖子/删商品时，数据库不会级联到图片。
+        结果就是图片记录和磁盘文件双双变成孤儿：没人能再查到它（帖子都没了），
+        但它一直占着磁盘和表行。
+
+        ### 调用时机
+        在删目标【之前或之后】调都行 —— 关联靠的是 target_id 的值，
+        帖子删了那个数字也还在，照样查得到。这里推荐先调它，事务里的意图更清楚。
+
+        ### 为什么不 commit
+        沿用项目里 crud 的约定：只做操作、由调用方统一 commit，
+        这样"删图 + 删帖子"才能进同一个事务（要么都成、要么都回滚）。
+        """
+        result = await db.execute(
+            select(Image).where(
+                Image.target_type == target_type,
+                Image.target_id == target_id,
+            )
+        )
+        images = list(result.scalars().all())
+
+        for image in images:
+            filepath = BASE_UPLOAD_DIR / image.target_type / image.filename
+            try:
+                if filepath.exists():
+                    filepath.unlink()
+            except OSError:
+                # ## 为什么这里吞掉而不是上抛
+                # 文件删不掉（权限、被占用）不该挡住"删帖子"这个主业务 ——
+                # 留一个孤儿文件，比让用户删不掉帖子要好。
+                logging.exception("删除图片文件失败，已跳过: %s", filepath)
+            await db.delete(image)
+
+        return len(images)
 
     @staticmethod
     async def delete_image(

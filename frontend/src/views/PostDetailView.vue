@@ -26,6 +26,16 @@
       </div>
       <div class="content" style="margin:16px 0;white-space:pre-wrap;line-height:1.8">{{ post.content }}</div>
 
+      <!-- 帖子配图：只在有图时渲染。
+           用 <a target="_blank"> 而不是 JS 灯箱 —— 不用维护"当前预览哪张"的状态，
+           点一下直接开新标签看原图，移动端也顺手。 -->
+      <div v-if="images.length > 0" class="post-images">
+        <a v-for="img in images" :key="img.id"
+           :href="imgUrl(img)" target="_blank" rel="noopener" class="post-image-link">
+          <img :src="imgUrl(img)" class="post-image" loading="lazy" alt="帖子配图" />
+        </a>
+      </div>
+
       <div class="actions">
         <button class="btn-outline btn-sm" @click="toggleLike" :class="{ liked: isLiked, 'like-pop': likeAnimating }">
           {{ isLiked ? '已赞' : '点赞' }} ({{ likeCount }})
@@ -105,7 +115,7 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { postApi, commentApi, likeApi, bookmarkApi, userApi } from '../api/index.js'
+import { postApi, commentApi, likeApi, bookmarkApi, userApi, imageApi } from '../api/index.js'
 
 const route = useRoute()
 const router = useRouter()
@@ -146,6 +156,23 @@ const pageSize = 10
 const newComment = ref('')
 const replyTo = ref(null)
 const replyContent = ref('')
+
+// 帖子配图
+const images = ref([])
+
+function imgUrl(img) {
+  // 图片是【多态关联】存的：target_type 决定子目录，filename 是 UUID 文件名。
+  // 后端只返回 filename（不含路径），路径由前端拼 —— 所以这里必须用 img.target_type，
+  // 不能写死 'post'（同一套逻辑帖子和商品共用）。
+  return `/uploads/${img.target_type}/${img.filename}`
+}
+
+async function loadImages() {
+  try {
+    const res = await imageApi.getList('post', postId.value)
+    if (res.code === 200) images.value = res.data || []
+  } catch {}
+}
 
 function formatTime(t) {
   if (!t) return ''
@@ -314,10 +341,36 @@ onMounted(() => {
   loadComments()
   loadLikeStatus()
   loadBookmarkStatus()
+  loadImages()
 })
 </script>
 
 <style scoped>
+/* 帖子配图：自适应网格，小屏每行 2 张、大屏更多 */
+.post-images {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 8px;
+  margin: 12px 0;
+}
+.post-image-link {
+  display: block;
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+  border-radius: 8px;
+  border: 1px solid var(--border-color, #e5e7eb);
+}
+.post-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;      /* 统一裁成方图，避免高度参差不齐把版式撑乱 */
+  display: block;
+  transition: transform 0.2s;
+}
+.post-image-link:hover .post-image {
+  transform: scale(1.05);
+}
+
 .skeleton-list {
   display: flex;
   flex-direction: column;

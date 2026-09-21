@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import Integer, String, DateTime, ForeignKey, UniqueConstraint
+from sqlalchemy import Integer, String, DateTime, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from models.model_base import Base
@@ -8,9 +8,19 @@ from models.model_base import Base
 
 class Image(Base):
     __tablename__ = "images"
-    __table_args__ = (
-        UniqueConstraint("target_type", "target_id", name="uq_image_target_type_target_id"),
-    )
+    # ## 这里原本有一条 UniqueConstraint，2026-09-21 已删除（连同上面的 import）
+    #     UniqueConstraint("target_type", "target_id", name="uq_image_target_type_target_id")
+    #
+    # 它的语义是"一个目标只能有一张图"，和业务直接冲突：
+    # 帖子和商品都要支持多图（crud/image.py 有 MAX_IMAGES_PER_TARGET=5 的数量上限，
+    # 本表还有 sort_order 排序），加上它之后传第二张图就会 IntegrityError。
+    #
+    # 为什么之前一直没炸：这条约束只写在模型里、从没进过任何迁移，
+    # 所以数据库里根本没有它（information_schema 实测确认）。
+    # 但它是个定时炸弹 —— 哪天跑 alembic autogenerate 就会被加进迁移。
+    #
+    # 注意：删掉它【不需要】迁移 —— 数据库本来就没有，删完模型和库反而一致了。
+    # 验证方法：alembic check（不再报这条即可）。
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True, comment="图片ID")
     filename: Mapped[str] = mapped_column(String(255), nullable=False, comment="存储文件名")

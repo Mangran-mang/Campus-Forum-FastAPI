@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ai_agent.review import review_post_content
 from config.database_config import get_database
 from config.redis_config import try_report_deduplicate
+from crud.image import ImageService
 from crud.notification import NotificationService
 from crud.posts import PostService
 from crud.user import UserService
@@ -205,6 +206,11 @@ async def report_post(
         # 违规：硬删帖子（评论经外键 CASCADE 级联删除）
         post_title = post.title
         post_author_uid = post.author_uid
+        # ## 图片要手动删
+        # 评论靠外键 CASCADE，但图片不行 —— images 和帖子之间是【多态软关联】
+        # （target_type + target_id，没有外键），数据库不会级联，
+        # 不删的话图片记录和磁盘文件都变成孤儿。
+        await ImageService.delete_images_by_target(db, "post", str(post_id))
         await db.delete(post)
         await db.commit()
         # 通知双方（post_id 传 None，避免通知随帖子级联删除）

@@ -7,6 +7,7 @@ from sqlalchemy.orm import selectinload
 from sqlalchemy.sql.functions import func
 from starlette import status
 
+from crud.image import ImageService
 from crud.user import UserService
 from models import User
 from models.model_posts import Posts
@@ -201,6 +202,13 @@ class PostService:
 
         if orm_post.author_uid != user.uid and not user.is_superuser:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,detail="无权限删除此帖子")
+
+        # ## 为什么要手动删图片（2026-09-21）
+        # images 表和帖子之间是【多态软关联】（target_type + target_id，没有外键），
+        # 所以数据库不会级联 —— 不删的话，图片记录和磁盘文件会变成孤儿：
+        # 帖子里再也查不到它，但它一直占着磁盘和表行。
+        # 这个调用只做操作不 commit，下面统一的 commit 会把"删图 + 删帖"放进同一事务。
+        await ImageService.delete_images_by_target(db, "post", str(post_id))
 
         await db.delete(orm_post)
         await db.commit()
