@@ -1,5 +1,5 @@
 from fastapi import HTTPException
-from sqlalchemy import select, delete
+from sqlalchemy import select, delete, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status
 
@@ -39,10 +39,13 @@ class LikeService:
 
     async def crud_get_like_count(self, db: AsyncSession, post_id: int):
         """获取帖子点赞数"""
-        stmt = select(Like).where(Like.post_id == post_id)
+        stmt = select(func.count()).where(Like.post_id == post_id)
         result = await db.execute(stmt)
-        likes = result.scalars().all()
-        return len(likes)
+        return result.scalar()
+        # stmt = select(Like).where(Like.post_id == post_id)
+        # result = await db.execute(stmt)
+        # likes = result.scalars().all()
+        # return len(likes)# 遗留问题1
 
     async def crud_check_user_liked(self, db: AsyncSession, post_id: int, user_uid: str):
         """检查当前用户是否已点赞"""

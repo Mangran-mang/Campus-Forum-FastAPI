@@ -31,6 +31,7 @@ class Conversation(Base):
     )
 
     # 关系映射
+    # 讲一下三个参数的实际含义,按顺序来:关联到的orm类,本类用哪个列去连,对方类哪个字段指回本类
     user_a: Mapped["User"] = relationship("User", foreign_keys=[user_a_uid], back_populates="conversations_as_a")
     user_b: Mapped["User"] = relationship("User", foreign_keys=[user_b_uid], back_populates="conversations_as_b")
     messages: Mapped[list["Message"]] = relationship(

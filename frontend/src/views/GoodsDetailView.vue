@@ -243,8 +243,8 @@ async function loadComments(page = 1) {
   try {
     const res = await goodsCommentApi.getList(gid.value, { page, page_size: pageSize })
     if (res.code === 200) {
-      // 后端把 total 收进了 data（原来 data 直接是列表、total 平级）
-      comments.value = res.data?.list || []
+      // 字段名从 list 统一成 comments（与帖子评论接口保持一致）
+      comments.value = res.data?.comments || []
       totalComments.value = res.data?.total || 0
     }
   } catch {}

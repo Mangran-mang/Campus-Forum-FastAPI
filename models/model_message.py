@@ -1,6 +1,8 @@
 from datetime import datetime
 
-from sqlalchemy import Integer, String, DateTime, Text, ForeignKey
+from sqlalchemy import (
+    Integer, String, DateTime, Text, ForeignKey, UniqueConstraint,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from models.model_base import Base
@@ -9,6 +11,9 @@ from models.model_base import Base
 class Message(Base):
     """私信消息表：会话里的每一条消息"""
     __tablename__ = "messages"
+    __table_args__ = (
+        UniqueConstraint("conversation_id", "created_time", name="uq_message_conversation"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True, comment="消息id")
     conversation_id: Mapped[int] = mapped_column(

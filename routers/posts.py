@@ -1,3 +1,4 @@
+import asyncio
 import logging
 
 from fastapi import APIRouter, Depends, Query
@@ -10,9 +11,16 @@ from crud.notification import NotificationService
 from crud.posts import PostService
 from crud.user import UserService
 from models import User, Notification
-from schemas.posts import PostsCreateModel, PostsUpdateModel
+from schemas.common import Envelope
+from schemas.posts import (
+    PostsCreateModel,
+    PostsUpdateModel,
+    PostOut,
+    PostTopModel,
+    ReviewResultOut,
+)
 
-from tools.dependencies import AccessTokenBearer,get_user_by_token
+from tools.dependencies import AccessTokenBearer, UserChecker, get_user_by_token
 from tools.exceptions import success_response, APIException, PostException
 
 router = APIRouter(prefix="/api/posts",tags=["帖子管理"])
@@ -21,8 +29,9 @@ postservice = PostService()
 userservice = UserService()
 notificationservice = NotificationService()
 access_token_bearer = AccessTokenBearer()
+superuser_checker = UserChecker(True)   # 仅管理员
 
-@router.post("/add_post")
+@router.post("/add_post", response_model=Envelope[PostOut])
 async def add_new_post(
         post_data:PostsCreateModel,
         db:AsyncSession=Depends(get_database),
@@ -35,7 +44,7 @@ async def add_new_post(
     post = await postservice.crud_add_new_post(db,post_data)
     return success_response(data=post, message="添加成功")
 
-@router.get("/get_posts")
+@router.get("/get_posts",response_model=Envelope[list[PostOut]], description="获取帖子列表")
 async def get_posts_list(
         db:AsyncSession=Depends(get_database),
         page:int=Query(default=1,alias="page",description="页码",ge=1),
@@ -61,7 +70,7 @@ async def get_posts_list(
     has_more = total > page * page_size# 暂未用到
     return success_response(data=post_list, message="获取成功")
 
-@router.get("/get_post/{post_id}")
+@router.get("/get_post/{post_id}", response_model=Envelope[PostOut], description="获取帖子详情")
 async def get_post_by_id(
         post_id:int,
         db:AsyncSession=Depends(get_database),
@@ -80,7 +89,7 @@ async def get_post_by_id(
     await db.refresh(post, ["author", "category"])
     return success_response(data=post, message="获取成功")
 
-@router.post("/update_post")
+@router.post("/update_post", response_model=Envelope[PostOut])
 async def update_post(
         post_data:PostsUpdateModel,
         db:AsyncSession=Depends(get_database),
@@ -94,7 +103,7 @@ async def update_post(
     post = await postservice.crud_update_post(db,post_id,post_data,orm_user)
     return success_response(data=post, message="更新成功")
 
-@router.delete("/delete_post/{post_id}")
+@router.delete("/delete_post/{post_id}", response_model=Envelope[bool])
 async def delete_post(
         post_id:int,
         db:AsyncSession=Depends(get_database),
@@ -107,7 +116,38 @@ async def delete_post(
     post = await postservice.crud_delete_post(db,post_id,orm_user)
     return success_response(data=post, message="删除成功")
 
-@router.post("/report/{post_id}")
+@router.post("/admin/set_top/{post_id}", response_model=Envelope[PostOut])
+async def set_post_top(
+        post_id: int,
+        top_data: PostTopModel,
+        db: AsyncSession = Depends(get_database),
+        _=Depends(superuser_checker),          # ← 仅管理员
+):
+    """
+    置顶 / 取消置顶帖子（仅管理员）
+
+    ## comment
+    ### 为什么单独开一个接口，而不是让 /update_post 顺手带上 is_top
+    置顶是【管理动作】，和"改帖子内容"不是一回事：
+      - /update_post 的调用方是【作者本人】
+      - 这个接口的调用方是【管理员】
+    混在一起就得在 /update_post 里加"如果传了 is_top 就检查是不是管理员"这类条件，
+    以后每加一个管理属性都得再加一次判断 —— 迟早漏一个。
+    分开之后，权限边界就是"这个接口有没有挂 UserChecker"，扫一眼就能看出来。
+    ### 为什么不额外校验"不能置顶私密帖子"
+    置顶只影响排序，不影响可见性。私密帖子本来就只有作者能看见，
+    把它置顶也不会泄露给任何人，所以不需要额外校验。
+    ### 为什么用 request body 传 is_top 而不是 query 参数
+    保持一致：改状态的接口都用 body。query 参数留在路由 path 里（post_id）。
+    """
+    post = await postservice.crud_set_post_top(db, post_id, top_data.is_top)
+    return success_response(
+        data=post,
+        message="已置顶" if top_data.is_top else "已取消置顶",
+    )
+
+
+@router.post("/report/{post_id}", response_model=Envelope[ReviewResultOut])
 async def report_post(
         post_id: int,
         db: AsyncSession = Depends(get_database),
@@ -138,7 +178,7 @@ async def report_post(
 
     # 调用 AI 审核（同步，qwen3.6-flash 约 2-5 秒）
     try:
-        review_result = review_post_content(post.title, post.content)
+        review_result = await asyncio.to_thread(review_post_content, post.title, post.content)# 遗留问题5
         violated = review_result.get("violated", False)
         viol_type = review_result.get("type", "")
         reason = review_result.get("reason", "")

@@ -43,8 +43,16 @@ class CommentsService:
         await user_service.crud_add_experience(db, commenter_uid, 1)
         await db.commit()
         await db.refresh(orm_comment)
-        # 同时加载 author 信息（已包含最新经验/等级）
-        await db.refresh(orm_comment, ["author"])
+        # 同时加载 author 与 replies（author 已包含最新经验/等级）
+        # ## 为什么连 replies 也要加载
+        # 返回给路由的是 CommentOut，里面有个 replies 字段。
+        # 访问"未加载的关系"会触发懒加载：实测即使新建对象的 replies 是空的，
+        # 只要没预加载就会真的发一条 SELECT —— 同步下是多一次查询，
+        # 异步下就是 MissingGreenlet → 500。
+        # （新评论的 replies 必然为空，这一次查询确实有点浪费；
+        #   用 refresh(..., ["replies"]) 换掉它，是为了让模型不必为
+        #   "新增"和"列表"两条路径写两个版本。）
+        await db.refresh(orm_comment, ["author", "replies"])
         return orm_comment
 
     async def crud_get_comments_by_post_id(
@@ -110,10 +118,18 @@ class CommentsService:
         orm_comment = await self.crud_get_comment_by_comment_id(db, comment_id)
         if orm_comment is None:
             raise HTTPException(status_code=404, detail="该评论不存在")
-        if orm_comment.author_uid != current_user_uid or not user.is_superuser:
+        if orm_comment.author_uid == current_user_uid or  user.is_superuser:# 遗留问题2
+            stmt = delete(Comments).where(Comments.id == comment_id)
+            result = await db.execute(stmt)
+            await db.commit()
+            return result.rowcount > 0
+        else:
             raise HTTPException(status_code=403, detail="没有权限删除该评论")
 
-        stmt = delete(Comments).where(Comments.id == comment_id)
-        result = await db.execute(stmt)
-        await db.commit()
-        return result.rowcount > 0
+        # if orm_comment.author_uid != current_user_uid or not user.is_superuser:# 遗留问题2
+        #     raise HTTPException(status_code=403, detail="没有权限删除该评论")
+        #
+        # stmt = delete(Comments).where(Comments.id == comment_id)
+        # result = await db.execute(stmt)
+        # await db.commit()
+        # return result.rowcount > 0

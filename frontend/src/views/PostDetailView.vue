@@ -257,8 +257,11 @@ async function loadComments(page = 1) {
   try {
     const res = await commentApi.getList(postId.value, { page, page_size: pageSize })
     if (res.code === 200) {
-      comments.value = res.data || []
-      totalComments.value = res.total || 0
+      // 后端把 total 和列表一起收进了 data。
+      // 原来 data 直接是列表、且后端根本没返回 total，而这里读的是 res.total（平级），
+      // 于是 totalComments 恒为 0 —— 表现为"评论 (0)"且分页条不显示。
+      comments.value = res.data?.comments || []
+      totalComments.value = res.data?.total || 0
     }
   } catch {}
 }

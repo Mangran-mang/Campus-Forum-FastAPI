@@ -33,7 +33,7 @@ class GoodsCommentService:
         db.add(orm_comment)
         await db.commit()
         await db.refresh(orm_comment)
-        await db.refresh(orm_comment, ["author"])
+        await db.refresh(orm_comment, ["author", "replies"])
         return orm_comment
 
     async def crud_get_comments_by_goods(

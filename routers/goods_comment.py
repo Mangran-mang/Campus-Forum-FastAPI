@@ -6,7 +6,12 @@ from config.database_config import get_database
 from crud.goods_comment import GoodsCommentService
 from crud.notification import NotificationService
 from models.model_goods import Goods
-from schemas.goods_comment import GoodsCommentCreateModel
+from schemas.common import Envelope
+from schemas.goods_comment import (
+    GoodsCommentCreateModel,
+    GoodsCommentOut,
+    GoodsCommentPageOut,
+)
 from tools.dependencies import AccessTokenBearer, get_user_by_token
 from tools.exceptions import success_response
 
@@ -17,7 +22,7 @@ notification_service = NotificationService()
 access_token_bearer = AccessTokenBearer()
 
 
-@router.post("/{goods_gid}/comments")
+@router.post("/{goods_gid}/comments", response_model=Envelope[GoodsCommentOut])
 async def add_comment(
         goods_gid: str,
         comment_data: GoodsCommentCreateModel,
@@ -58,23 +63,27 @@ async def add_comment(
     return success_response(data=comment, message="评论成功")
 
 
-@router.get("/{goods_gid}/comments")
+@router.get("/{goods_gid}/comments", response_model=Envelope[GoodsCommentPageOut])
 async def get_comments(
         goods_gid: str,
         db: AsyncSession = Depends(get_database),
         page: int = Query(default=1, alias="page", description="页码", ge=1),
         page_size: int = Query(default=10, alias="page_size", description="每页数量", ge=1),
 ):
-    """获取商品评论列表"""
+    """获取商品评论列表
+
+    字段名从 list 改成了 comments —— 与帖子评论接口统一
+    （list 会遮蔽 Python 内建名，且两个同概念的接口不该用不同字段名）。
+    前端同步改成读 res.data.comments。
+    """
     total, comments_list = await comment_service.crud_get_comments_by_goods(
         db, goods_gid, page, page_size
     )
-    # total 原来是平级字段，现在收进 data，前端改成读 res.data.total
     return success_response(
-        data={"list": comments_list, "total": total}, message="获取成功", )
+        data={"comments": comments_list, "total": total}, message="获取成功", )
 
 
-@router.delete("/comments/{comment_id}")
+@router.delete("/comments/{comment_id}", response_model=Envelope[bool])
 async def delete_comment(
         comment_id: int,
         db: AsyncSession = Depends(get_database),

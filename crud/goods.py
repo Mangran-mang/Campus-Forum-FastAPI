@@ -16,7 +16,7 @@ class GoodsService:
     async def get_all_goods(self, db: AsyncSession):
         stmt = select(Goods).options(
             selectinload(Goods.classify_rel),
-            selectinload(Goods.author),
+            selectinload(Goods.author),# 遗留问题4
         ).order_by(Goods.update_time.desc())
         result = await db.execute(stmt)
         return result.scalars().all()

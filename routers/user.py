@@ -9,8 +9,10 @@ from config.database_config import get_database
 from crud.user import UserService
 from crud.token import TokenService
 
+from schemas.common import Envelope
 from schemas.user import (
     UserCreateModel, UserUpdateModel, UserLoginModel, UserOutModel,
+    LoginOut, TokenPairOut,
 )
 from tools import security
 from tools.exceptions import success_response, UserException
@@ -31,21 +33,32 @@ user_checker = UserChecker(True)
 DUMMY_HASH = security.get_password_hash("对齐时间的假密码")
 
 
-@router.get("/current_user")
+@router.get("/current_user", response_model=Envelope[UserOutModel])
 async def get_current_user(
         user=Depends(get_user_by_token), ):
     """
     获取当前用户（需登录）
+
+    ## comment
+    这里是"自己看自己"，所以用 UserOutModel（含 email/experience）。
+    对外的场景（帖子作者、评论作者、搜索结果等）一律用 UserBriefOut。
     """
     user_out = UserOutModel.model_validate(user)
     return success_response(data=user_out, message="获取成功")
 
 
-@router.get("/all")
+@router.get("/all", response_model=Envelope[list[UserOutModel]])
 async def get_all_users(
         db: AsyncSession = Depends(get_database, ), _=Depends(user_checker), ):
     """
-    获取所有用户
+    获取所有用户（仅管理员）
+
+    ## comment
+    ### 这里给 email 是有意的，但值得记一笔
+    这是管理员列表接口，管理员本来就该看到邮箱，所以用 UserOutModel。
+    但它是目前全项目唯一"能批量拿到别人 email"的地方——
+    权限完全靠 UserChecker(True) 这一层。以后若给管理员加别的入口，
+    记得同样加 user_checker。
     """
     # print(f"查询者信息为{user_details}")
     users = await user_service.crud_get_all_users(db)
@@ -53,7 +66,7 @@ async def get_all_users(
     return success_response(data=users_out, message="获取成功")
 
 
-@router.post("/add")
+@router.post("/add", response_model=Envelope[UserOutModel])
 async def add_new_user(
         user_data: UserCreateModel, db: AsyncSession = Depends(get_database), ):
     """
@@ -67,14 +80,14 @@ async def add_new_user(
     return success_response(data=user_out, message="添加成功")
 
 
-@router.get("/get/{email}")
+@router.get("/get/{email}", response_model=Envelope[UserOutModel])
 async def get_user_by_email(
         email: str,
         db: AsyncSession = Depends(get_database),
         user = Depends(get_user_by_token)
 ):
     """
-    通过邮箱获取用户
+    通过邮箱获取用户（仅本人）
     """
     if user.email != email:
         raise HTTPException(status_code=403, detail="无权访问")
@@ -86,7 +99,7 @@ async def get_user_by_email(
         raise UserException()  # 原先是 return {"code":404,...}，HTTP 却是 200
 
 
-@router.post("/update")
+@router.post("/update", response_model=Envelope[UserOutModel])
 async def update_user(
         user_data: UserUpdateModel, db: AsyncSession = Depends(get_database, ),
         user_details=Depends(access_token_bearer), ):
@@ -110,12 +123,14 @@ async def update_user(
         raise UserException()  # 原先是 return {"code":404,...}，HTTP 却是 200
 
 
-@router.delete("/delete/{email}")
+@router.delete("/delete/{email}", response_model=Envelope[None])
 async def delete_user(
         email: str, db: AsyncSession = Depends(get_database),
         user_details=Depends(access_token_bearer), ):
     """
     删除用户（仅本人或管理员可操作）
+
+    没有数据可返回，data 是 None —— Envelope[None] 表达"这里不该有 data"。
     """
     current_email = user_details["user"]["email"]
     current_user = await user_service.crud_get_user_by_email(db, current_email)
@@ -132,7 +147,7 @@ async def delete_user(
         raise UserException()  # 原先是 return {"code":404,...}，HTTP 却是 200
 
 
-@router.post("/login")
+@router.post("/login", response_model=Envelope[LoginOut])
 async def login_user(
         login_data: UserLoginModel,
         db: AsyncSession = Depends(get_database), ):
@@ -194,7 +209,7 @@ async def login_user(
             status_code=401, detail="邮箱或密码错误", )
 
 
-@router.post("/refresh_token")
+@router.post("/refresh_token", response_model=Envelope[TokenPairOut])
 async def refresh_token(
         token_data=Depends(refresh_token_bearer),
         db: AsyncSession = Depends(get_database), ):
@@ -250,7 +265,7 @@ async def refresh_token(
         )
 
 
-@router.post("/logout")
+@router.post("/logout", response_model=Envelope[None])
 async def logout_user(
         token_data: dict = Depends(access_token_bearer),
         db: AsyncSession = Depends(get_database), ):

@@ -1,6 +1,8 @@
 from datetime import datetime
 
-from sqlalchemy import Integer, String, Boolean, DateTime, ForeignKey, Text
+from sqlalchemy import (
+    Integer, String, Boolean, DateTime, ForeignKey, Text, UniqueConstraint,
+)
 from sqlalchemy.orm import Mapped, mapped_column
 
 from models.model_base import Base
@@ -8,6 +10,9 @@ from models.model_base import Base
 
 class Notification(Base):
     __tablename__ = "notifications"
+    __table_args__ = (
+        UniqueConstraint("recipient_uid", "post_id", "created_time", name="uq_notification_recipient_post"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True, comment="通知id")
     recipient_uid: Mapped[str] = mapped_column(

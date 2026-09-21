@@ -3,19 +3,21 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from config.database_config import get_database
 from crud.goods_classify import GoodsClassifyService
+from schemas.common import Envelope
+from schemas.goods import GoodsClassifyOut
 from tools.exceptions import success_response
 
 router = APIRouter(prefix='/api/classify', tags=['商品分类'])
 
 
-@router.get('/get_classify')
+@router.get('/get_classify', response_model=Envelope[list[GoodsClassifyOut]])
 async def get_all_classify(db: AsyncSession = Depends(get_database)):
     service = GoodsClassifyService()
     classify_list = await service.get_all_classify(db)
     return success_response(data=classify_list, message="获取成功")
 
 
-@router.get('/get_classify/{id}')
+@router.get('/get_classify/{id}', response_model=Envelope[GoodsClassifyOut])
 async def get_classify(id: str, db: AsyncSession = Depends(get_database)):
     service = GoodsClassifyService()
     result = await service.get_goods_classify(db, id)

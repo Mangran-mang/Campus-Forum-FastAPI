@@ -3,7 +3,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from config.database_config import get_database
 from crud.notification import NotificationService
-from schemas.notification import NotificationCreateModel
+from schemas.common import Envelope
+from schemas.notification import (
+    NotificationCreateModel,
+    NotificationOut,
+    NotificationPageOut,
+    UnreadCountOut,
+)
 from tools.dependencies import AccessTokenBearer, UserChecker
 from tools.exceptions import success_response
 
@@ -14,7 +20,7 @@ access_token_bearer = AccessTokenBearer()
 superuser_checker = UserChecker(True)
 
 
-@router.get("/")
+@router.get("/", response_model=Envelope[NotificationPageOut])
 async def get_notifications(
         db: AsyncSession = Depends(get_database),
         page: int = Query(default=1, ge=1),
@@ -31,7 +37,7 @@ async def get_notifications(
         data={"total": total, "notifications": notifications}, message="获取成功", )
 
 
-@router.get("/unread_count")
+@router.get("/unread_count", response_model=Envelope[UnreadCountOut])
 async def get_unread_count(
         db: AsyncSession = Depends(get_database),
         user_details=Depends(access_token_bearer),
@@ -41,18 +47,21 @@ async def get_unread_count(
     return success_response(data={"unread_count": count}, message="获取成功")
 
 
-@router.post("/read/{notif_id}")
+@router.post("/read/{notif_id}", response_model=Envelope[None])
 async def mark_as_read(
         notif_id: int,
         db: AsyncSession = Depends(get_database),
         user_details=Depends(access_token_bearer),
 ):
-    """标记单条通知为已读"""
+    """标记单条通知为已读
+
+    没有数据可返回，data 是 None —— Envelope[None] 正好表达"这里不该有 data"。
+    """
     await notification_service.crud_mark_as_read(db, notif_id, user_details["user"]["user_uid"])
     return success_response(message="标记成功")
 
 
-@router.post("/read_all")
+@router.post("/read_all", response_model=Envelope[None])
 async def mark_all_as_read(
         db: AsyncSession = Depends(get_database),
         user_details=Depends(access_token_bearer),
@@ -62,7 +71,7 @@ async def mark_all_as_read(
     return success_response(message="全部标记已读")
 
 
-@router.post("/send")
+@router.post("/send", response_model=Envelope[NotificationOut])
 async def send_system_notification(
         notif_data: NotificationCreateModel,
         db: AsyncSession = Depends(get_database),

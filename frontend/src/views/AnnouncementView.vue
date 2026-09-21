@@ -6,9 +6,42 @@
       <!-- 在这里添加新的公告条目，最新的放在最上面 -->
       <!-- 格式：复制一条 .announce-item，修改日期和内容 -->
       <div class="announce-item card">
+        <div class="announce-date">2026-09-14~2026-09-21</div>
+        <h3>论坛环境安全优化</h3>
+        <p>郑财校园墙1.4优化版</p>
+        <ul>
+          <li> 修复了同时在线人数过多时会导致数据库连接崩溃的问题</li>
+          <li> 优化了数据库查询,提高用户访问速度</li>
+          <li> 修复了AI审核使全站等待的问题</li>
+          <li> 修复了用户信息会在接口返回的问题</li>
+          <li> 优化了响应速度</li>
+          <li> 修复了用户误删正常删除帖子的问题</li>
+          <li> 修复了图片上传会因为图片名称导致异常的问题</li>
+          <li> 修复了翻页功能的异常</li>
+          <li> 修复了用户可以给自己管理员权限的BUG</li>
+          <li> 修复了帖子置顶的问题</li>
+          <li> 修复删除用户时的连锁BUG</li>
+          <li> 修复了用户信息会在暴露的问题</li>
+          <li> 修复了实时通讯中校验形同虚设的问题</li>
+          <li> 修复了部分逻辑重复的问题</li>
+        </ul>
+        <p>如有问题反馈至3511687086@qq.com</p>
+      </div>
+
+      <div class="announce-item card">
         <div class="announce-date">2026-09-4</div>
         <h3>论坛环境安全优化</h3>
-        <p>郑财论坛1.26优化版</p>
+        <p>郑财校园墙1.26优化版</p>
+        <ul>
+          <li> 增加token轮换制</li>
+        </ul>
+        <p>如有问题反馈至3511687086@qq.com</p>
+      </div>
+
+      <div class="announce-item card">
+        <div class="announce-date">2026-09-4</div>
+        <h3>论坛环境安全优化</h3>
+        <p>郑财校园墙1.26优化版</p>
         <ul>
           <li> 增加token轮换制</li>
         </ul>
@@ -18,7 +51,7 @@
       <div class="announce-item card">
         <div class="announce-date">2026-09-3</div>
         <h3>论坛环境安全优化</h3>
-        <p>郑财论坛1.24优化版</p>
+        <p>郑财校园墙1.24优化版</p>
         <ul>
           <li> token改为哈希后存放</li>
           <li> 增强用户信息安全性</li>
@@ -29,7 +62,7 @@
       <div class="announce-item card">
         <div class="announce-date">2026-09-2</div>
         <h3>论坛环境安全优化</h3>
-        <p>郑财论坛1.2优化版</p>
+        <p>郑财校园墙1.2优化版</p>
         <ul>
           <li> 全站报错将会记录进日志</li>
           <li> 重构了全部异常处理逻辑</li>
@@ -41,7 +74,7 @@
       <div class="announce-item card">
         <div class="announce-date">2026-08-29</div>
         <h3>论坛环境安全优化</h3>
-        <p>郑财论坛1.18优化版</p>
+        <p>郑财校园墙1.18优化版</p>
         <ul>
           <li> 增加图片上传的校验</li>
           <li> 修复了图片上传失败不提示的情况</li>
@@ -56,7 +89,7 @@
       <div class="announce-item card">
         <div class="announce-date">2026-08-28</div>
         <h3>论坛环境安全优化</h3>
-        <p>郑财论坛1.16优化版</p>
+        <p>郑财校园墙1.16优化版</p>
         <ul>
           <li> 增强数据库连接稳定性与性能</li>
           <li> 修复了不同时区会造成token时间误差的BUG</li>
@@ -67,7 +100,7 @@
       <div class="announce-item card">
         <div class="announce-date">2026-08-27</div>
         <h3>论坛环境安全优化</h3>
-        <p>郑财论坛1.12优化版</p>
+        <p>郑财校园墙1.12优化版</p>
         <ul>
           <li> 限制非管理员查询功能，增强安全性</li>
           <li> 解决了登出时账号缓存的问题</li>
@@ -79,7 +112,7 @@
       <div class="announce-item card">
         <div class="announce-date">2026-08-26</div>
         <h3>论坛环境安全优化</h3>
-        <p>郑财论坛1.1公测版</p>
+        <p>郑财校园墙1.1公测版</p>
         <ul>
           <li> 新增校验模型，增加响应安全性</li>
         </ul>
@@ -89,7 +122,7 @@
       <div class="announce-item card">
         <div class="announce-date">2026-08-20</div>
         <h3>论坛更新与优化</h3>
-        <p>郑财论坛1.02公测版</p>
+        <p>郑财校园墙1.02公测版</p>
         <ul>
           <li> 更换网站风格</li>
         </ul>
@@ -99,7 +132,7 @@
       <div class="announce-item card">
         <div class="announce-date">2026-08-17</div>
         <h3>论坛开源与公测</h3>
-        <p>郑财论坛1.0公测版</p>
+        <p>郑财校园墙1.0公测版</p>
         <ul>
           <li> 私信功能改为使用websocket实时通讯</li>
           <li> 使退出账号时进行浏览器缓存清理</li>
@@ -113,7 +146,7 @@
       <div class="announce-item card">
         <div class="announce-date">2026-08-14</div>
         <h3>论坛业务拓展</h3>
-        <p>郑财论坛0.6内测版</p>
+        <p>郑财校园墙0.6内测版</p>
         <ul>
           <li> 修复了帖子编辑时间显示bug</li>
           <li> 增加了AI审核员，它会理性删除被举报的帖子</li>
@@ -126,7 +159,7 @@
       <div class="announce-item card">
         <div class="announce-date">2026-08-3</div>
         <h3>论坛业务拓展</h3>
-        <p>郑财论坛0.5内测版</p>
+        <p>郑财校园墙0.5内测版</p>
         <ul>
           <li> 修复了邮箱注册的准确性</li>
           <li> 新增了私信功能</li>
@@ -140,7 +173,7 @@
       <div class="announce-item card">
         <div class="announce-date">2026-07-22</div>
         <h3>论坛业务拓展</h3>
-        <p>郑财论坛0.43内测版</p>
+        <p>郑财校园墙0.43内测版</p>
         <ul>
           <li> 新增举报功能，将直接通知管理员</li>
           <li> 修复了删除帖子功能，现已可以正常使用</li>
@@ -151,7 +184,7 @@
       <div class="announce-item card">
         <div class="announce-date">2026-07-15</div>
         <h3>论坛业务拓展</h3>
-        <p>郑财论坛0.40内测版</p>
+        <p>郑财校园墙0.40内测版</p>
         <ul>
           <li>交易模块新增图片功能</li>
           <li>用户可以标记交易情况</li>
@@ -166,7 +199,7 @@
       <div class="announce-item card">
         <div class="announce-date">2026-07-6</div>
         <h3>论坛业务拓展</h3>
-        <p>郑财论坛0.30内测版</p>
+        <p>郑财校园墙0.30内测版</p>
         <ul>
           <li>新增交易模块</li>
           <li>可以在商品下进行评论了</li>
@@ -177,7 +210,7 @@
       <div class="announce-item card">
         <div class="announce-date">2026-06-18</div>
         <h3>论坛正式上线</h3>
-        <p>郑财论坛0.21内测版</p>
+        <p>郑财校园墙0.21内测版</p>
         <ul>
           <li>修复了浏览量显示问题</li>
           <li>修复了通知功能的使用</li>

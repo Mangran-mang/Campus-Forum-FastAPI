@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>复习自测 · 六大模块深挖题 · 校园论坛</title>
+<style>
+  :root {
+    --primary: #e8582a;
+    --primary-soft: #fdf0ea;
+    --ink: #1f2430;
+    --ink-2: #4a5262;
+    --ink-3: #8a92a3;
+    --bg: #f5f6f8;
+    --card: #ffffff;
+    --line: #e6e9ef;
+    --good: #1a9e6c;
+    --warn: #d98a00;
+    --bad: #d64545;
+    --blue: #2f6fd0;
+    --radius: 14px;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: "Microsoft YaHei", "PingFang SC", "Segoe UI", sans-serif;
+    background: var(--bg); color: var(--ink); line-height: 1.75; padding-bottom: 80px;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 0 20px; }
+
+  header {
+    background: linear-gradient(135deg, #232a3a 0%, #3a3f55 60%, #5a3b2e 100%);
+    color: #fff; padding: 40px 0 84px;
+  }
+  header .tag {
+    display: inline-block; background: rgba(255,255,255,.14); border: 1px solid rgba(255,255,255,.25);
+    border-radius: 999px; padding: 3px 14px; font-size: 12.5px; letter-spacing: 1px; margin-bottom: 14px;
+  }
+  header h1 { font-size: 27px; font-weight: 700; }
+  header p.sub { color: rgba(255,255,255,.72); margin-top: 8px; font-size: 14px; }
+
+  /* ---------- 工具栏 ---------- */
+  .toolbar {
+    margin-top: -58px; background: var(--card); border-radius: var(--radius);
+    box-shadow: 0 10px 30px rgba(20,25,40,.12); padding: 14px 20px;
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    position: sticky; top: 10px; z-index: 50; border: 1px solid var(--line);
+  }
+  .toolbar .progress { font-size: 13.5px; color: var(--ink-2); font-weight: 600; }
+  .toolbar .progress b { color: var(--primary); font-size: 16px; }
+  .toolbar .track { flex: 1; min-width: 120px; height: 7px; background: #eef0f4; border-radius: 5px; overflow: hidden; }
+  .toolbar .track i { display: block; height: 100%; width: 0; background: linear-gradient(90deg,#f0b13c,#e8582a); border-radius: 5px; transition: width .3s; }
+  .btn {
+    border: 1px solid var(--line); background: #fff; color: var(--ink-2);
+    border-radius: 9px; padding: 7px 14px; font-size: 13px; font-weight: 600; cursor: pointer;
+  }
+  .btn:hover { border-color: var(--primary); color: var(--primary); }
+  .btn.primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+  .btn.primary:hover { background: #d34a1f; color: #fff; }
+  .saved-tip { font-size: 12px; color: var(--ink-3); }
+
+  /* ---------- 说明卡 ---------- */
+  .howto { margin-top: 24px; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px 24px; }
+  .howto h2 { font-size: 16px; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+  .howto h2::before { content: ""; width: 4px; height: 16px; border-radius: 2px; background: var(--primary); }
+  .howto ul { padding-left: 20px; font-size: 13.5px; color: var(--ink-2); }
+  .howto li { margin: 4px 0; }
+  .howto b { color: var(--ink); }
+
+  /* ---------- 模块区块 ---------- */
+  section { margin-top: 30px; }
+  .mod-head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 4px; }
+  .mod-head h2 { font-size: 20px; display: flex; align-items: center; gap: 10px; }
+  .mod-head h2::before { content: ""; width: 5px; height: 20px; border-radius: 3px; background: var(--primary); }
+  .mod-head .mprog { font-size: 12.5px; color: var(--ink-3); }
+  .files { font-size: 12.5px; color: var(--ink-3); margin-bottom: 14px; font-family: Consolas, monospace; }
+
+  .qcard { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px 22px 16px; margin-bottom: 14px; }
+  .qcard .q-top { display: flex; gap: 8px; align-items: flex-start; flex-wrap: wrap; }
+  .qcard .q-no { font-weight: 800; color: var(--primary); font-size: 15px; flex-shrink: 0; }
+  .qcard .q-text { font-size: 14.5px; font-weight: 600; flex: 1; min-width: 240px; }
+  .qcard .q-text code {
+    background: #f3f4f7; border: 1px solid #e8eaef; border-radius: 5px; font-size: 12px;
+    padding: 0 6px; color: #444d63; font-family: Consolas, monospace; font-weight: 400; white-space: nowrap;
+  }
+  .qt { display: inline-block; font-size: 11.5px; font-weight: 700; border-radius: 6px; padding: 1px 9px; white-space: nowrap; flex-shrink: 0; }
+  .qt.b { background: #e5f6ef; color: var(--good); }
+  .qt.a { background: #fdf3e0; color: var(--warn); }
+  .qt.i { background: #fdeaea; color: var(--bad); }
+  .qt.r { background: #e8f1fd; color: var(--blue); }
+  .qcard textarea {
+    width: 100%; min-height: 96px; margin-top: 12px; border: 1px solid var(--line);
+    border-radius: 10px; padding: 12px 14px; font: inherit; font-size: 13.5px;
+    background: #fcfcfd; resize: vertical; color: var(--ink); line-height: 1.7;
+  }
+  .qcard textarea:focus { outline: 2px solid rgba(232,88,42,.25); border-color: var(--primary); background: #fff; }
+  .qcard details { margin-top: 10px; }
+  .qcard summary { cursor: pointer; font-size: 12.5px; color: var(--blue); font-weight: 600; user-select: none; }
+  .qcard summary::marker { color: var(--blue); }
+  .qcard .check { background: #f6f9ff; border: 1px dashed #c8d8f5; border-radius: 10px; padding: 10px 16px; margin-top: 8px; font-size: 13px; color: var(--ink-2); }
+  .qcard .check li { margin: 3px 0 3px 18px; }
+
+  footer { margin-top: 44px; text-align: center; color: var(--ink-3); font-size: 12.5px; }
+  footer .line { width: 60px; height: 3px; background: var(--line); margin: 0 auto 14px; border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <span class="tag">CODE REVIEW · SELF QUIZ</span>
+    <h1>复习自测 · 六大模块深挖题</h1>
+    <p class="sub">图片 · 商品 · 评论 · 点赞 · 通知 · 实时私信 —— 开卷作答,答完导出发我批改</p>
+    <p class="sub">对应评估报告的复习计划第 1~2 阶段 · 共 <b id="totalLabel" style="color:#fff">-</b> 题</p>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <div class="toolbar">
+    <span class="progress">已答 <b id="doneLabel">0</b> / <span id="totalLabel2">-</span></span>
+    <span class="track"><i id="bar"></i></span>
+    <span class="saved-tip" id="savedTip"></span>
+    <button class="btn primary" id="exportBtn">导出答案 (.md)</button>
+    <button class="btn" id="copyBtn">复制答案</button>
+    <button class="btn" id="clearBtn">清空全部</button>
+  </div>
+
+  <div class="howto">
+    <h2>使用说明(先读这个)</h2>
+    <ul>
+      <li><b>答题方式:</b>在每个题下面的框里直接打字,答案<b>自动保存在本浏览器</b>里,关掉页面再打开不会丢(别换浏览器、别清缓存)。</li>
+      <li><b>开卷作答:</b>可以边看代码边答(题目里给了 <code>文件:行号</code>),但必须用自己的话写——抄代码注释不算懂。</li>
+      <li><b>每题写 150~400 字,</b>重心放在「为什么」和「如果…会怎样」,面试官追问的就是这些。</li>
+      <li><b>「自检点」先答后展开:</b>每题下面有个蓝色折叠条,是你答完后自己对照用的,别先看。</li>
+      <li><b>标签含义:</b><span class="qt b">基础</span>链路复述 · <span class="qt a">进阶</span>原理与边界 · <span class="qt i">面试</span>设计取舍高频题 · <span class="qt r">报告关联</span>直接对应评估报告里的问题</li>
+      <li>答完点「导出答案」得到一个 .md 文件,发给我就行;第二次「闭卷默画」等这轮批改完再说。</li>
+    </ul>
+  </div>
+
+  <div id="quiz"></div>
+
+  <footer>
+    <div class="line"></div>
+    <p>出题依据:2026-09-05 逐文件代码审查(评估报告见同目录 项目评估报告.html)· 题目中的行号对应当前 master 分支代码</p>
+    <p>答案自动保存于浏览器本地 · 导出后发给我统一批改</p>
+  </footer>
+</div>
+
+<script>
+(function () {
+  var MODULES = [
+    {
+      key: "img", title: "一、图片模块",
+      files: "models/model_image.py · crud/image.py · routers/image.py · main.py(静态挂载)",
+      qs: [
+        { t: "基础", q: "走链路:从 <code>POST /api/upload/post/123</code> 进入,按顺序说出请求经过的每一层、每一步做了什么,直到文件落盘、记录落库、响应返回。要求精确到函数名。",
+          c: ["顺序:MIME 白名单校验 → Content-Length 预检 → 流式读取累计大小 → 数量校验 → to_thread 压缩 → UUID 重命名+子目录 → write_bytes 落盘 → db.add/commit → 构造响应字典", "能说出每一步分别在 routers/image.py 与 crud/image.py 的哪个函数里", "能指出 author_uid 是从 token 里来的,前端传不了"] },
+        { t: "进阶", q: "上传大小为什么要校验两次(<code>Content-Length</code> 预检 + 流式边读边累计)?只保留 Content-Length 检查会有什么漏洞?",
+          c: ["Content-Length 是客户端声明、可伪造也可缺失(chunked 流式上传)", "只留预检:攻击者声明小、实际发大,内存被打爆", "流式累计是真正的兜底,两者是「快拒绝 + 硬保证」的关系"] },
+        { t: "进阶", q: "<code>_compress_image</code> 为什么要放进 <code>asyncio.to_thread</code>?如果直接在 async 函数里同步调用会怎样?对比 <code>routers/posts.py:141</code> 同步调用 AI 审核的问题,说说你从这一对代码里看到什么。",
+          c: ["PIL 压缩是 CPU 密集同步代码,直接调会阻塞事件循环,所有并发请求卡住", "to_thread 把它丢进线程池,事件循环继续跑", "同一个作者在同一项目里一处做对了、一处(ai invoke)没做对——说明「知道」和「贯彻」是两回事"] },
+        { t: "进阶", q: "GIF 为什么原样返回不压缩?如果强行对 GIF 走 PIL 重编码会发生什么?",
+          c: ["PIL 默认只取第一帧,动图变静图", "要保动图需逐帧处理,成本高收益低,所以直接跳过"] },
+        { t: "面试", q: "RGBA/P/LA 模式的图转 JPEG 时为什么必须特殊处理?WebP 和 PNG 的转法为什么不一样?",
+          c: ["JPEG 不支持 alpha 通道,带透明的图直接存会报错或出黑底", "WebP 支持透明所以保留;PNG→RGB 是为了减小体积(丢透明更省空间)", "能说出 img.mode 的含义"] },
+        { t: "报告关联", r: true, q: "上传接口的 <code>target_type</code> 来自 URL 路径且未做白名单校验,代码里直接 <code>subdir = BASE_UPLOAD_DIR / target_type</code> 拼子目录。想想 target_type 传 <code>..</code> 会发生什么?该怎么修?",
+          c: ["BASE_UPLOAD_DIR / '..' 指向项目根目录,文件被写到 uploads 外面(路径穿越)", "虽然文件名是 UUID 危害有限,但属于未收敛的输入", "修法:target_type 白名单 {post, goods},不合法直接 400"] },
+        { t: "进阶", q: "删除图片时先 <code>filepath.unlink()</code> 再 <code>db.delete + commit</code>。如果删文件成功但 commit 失败,数据库和磁盘各是什么状态?反过来先删库再删文件呢?两种顺序各产生什么垃圾、你选哪种?",
+          c: ["现顺序:库里有记录、文件没了 → 悬空记录;反序:文件在、库里没了 → 孤儿文件", "孤儿文件危害更小(不影响功能只是占空间),悬空记录会让前端拿到 404 图", "能给出自己选择的理由即可"] },
+        { t: "面试", q: "images 表为什么没有指向 posts/goods 的真实外键,而用 <code>target_type + target_id</code> 两个字符串字段做关联?这种「多态关联」牺牲了什么?",
+          c: ["一个列没法同时外键到两张表,多态关联是常见取舍", "牺牲引用完整性:帖子被删后图片记录成孤儿,数据库管不了", "能想到替代方案:type+id 联合校验、应用层清理任务"] },
+        { t: "进阶", q: "<code>GET /api/images/{target_type}/{target_id}</code> 没有任何登录校验,任何人可枚举任意目标的图片列表。评估实际风险有多大,你会怎么改?",
+          c: ["filename 是 UUID 且响应只给 id/filename,直接泄露危害低", "但上传者的行为痕迹(某人发过什么图)可被枚举", "改法:加登录依赖;或按 target 归属校验可见性"] }
+      ]
+    },
+    {
+      key: "goods", title: "二、商品与商品评论",
+      files: "models/model_goods.py · models/model_goods_comment.py · crud/goods.py · crud/goods_comment.py · routers/goods.py · routers/goods_comment.py",
+      qs: [
+        { t: "基础", q: "走链路:发布一个新商品(前端传的是分类<b>名字</b>字符串)从路由到落库的完整过程。重点:classify 字符串是怎么变成 classify 列里的整数 id 的?",
+          c: ["model_dump() → pop('classify') → 按 name 查 GoodsClassify → 查不到 404 → 换成 classify_obj.id → Goods(**data, author_uid=...)", "author_uid 来自 token 不是前端", "能说出查不到分类时的行为"] },
+        { t: "基础", q: "goods 的主键 gid 为什么用 String(36) 存 UUID,而 posts 用自增 int?两种主键方案各有什么优缺点?",
+          c: ["UUID:全局唯一、不可枚举、分库合并友好;缺点是长、索引体积大、无序", "自增:短、有序、索引友好;缺点是可枚举(爬虫遍历)、分布式下冲突", "结合 gid 对外暴露(商品详情 URL)说明选择理由"] },
+        { t: "面试", q: "price 为什么用 <code>DECIMAL(10,2)</code> 而不是 float?用 float 存金额会出什么事?",
+          c: ["二进制浮点无法精确表示 0.1,累加比较会出精度误差", "金额要求精确:DECIMAL 按十进制存", "能举 0.1+0.2!==0.3 的例子"] },
+        { t: "进阶", q: "「每人最多 10 个在售」的实现是查出该用户所有在售商品再 <code>len()</code>。两个问题:a) 为什么应该用 <code>func.count()</code>? b) 两个请求并发上架时这个检查靠得住吗?",
+          c: ["a. 全行取回浪费网络和内存,数据库端 count 只回一个数字", "b. check-then-act 竞态:两个并发请求都数到 9,都通过,最后 11 个", "思路:SELECT ... FOR UPDATE / 乐观重校 / 接受小概率超限"] },
+        { t: "报告关联", r: true, q: "<code>get_all_goods</code> 用 <code>selectinload(Goods.author)</code> 后把 ORM 直接返回。结合评估报告的实测结论说清楚:响应里为什么会出现作者的 <code>password</code> 字段?库里这个字段存的是什么?危害怎么评估?",
+          c: ["无 response_model 时 jsonable_encoder 递归 vars(orm),author 关系对象的全部列(含 password)都进响应", "库里是 bcrypt 哈希不是明文,但属敏感数据暴露(可离线撞弱口令)", "同链路还覆盖评论列表、帖子列表"] },
+        { t: "进阶", q: "model_goods.py 用 <code>TYPE_CHECKING</code> 加 else 分支把关联类置为 None,这是在解决什么问题?models/__init__.py 又起什么作用?",
+          c: ["解决模型文件互相引用的循环导入", "__init__.py 把全部模型 import 一遍,保证 Base.metadata 注册完整、Alembic autogenerate 看得全", "能说清运行时只用到字符串引用(relationship('User'))所以置 None 不影响"] },
+        { t: "基础", q: "status 用 MySQL <code>Enum('在售','已售出')</code>。说出 Enum 列至少一个好处和一个坏处,以及坏处触发时要做什么操作。",
+          c: ["好处:值域约束、省空间", "坏处:加新状态要 ALTER TABLE(迁移),跨工具兼容性一般", "对比 String+应用层校验的取舍"] },
+        { t: "面试", q: "并发问题:一个在售商品同时被两个人拍下,怎么保证只有一个人改成功?给出用现有技术栈可实现的最简方案。",
+          c: ["UPDATE goods SET status='已售出' WHERE gid=? AND status='在售',检查 rowcount", "谁的影响行数是 1 谁成功,另一个返回 0 → 已被抢", "对比先查再改为什么不行(竞态窗口)"] },
+        { t: "基础", q: "对比商品评论表和帖子评论表结构,最大的差异是什么?为什么商品评论不需要 parent_id?",
+          c: ["帖子评论有 parent_id 自关联支持楼中楼,商品评论是平铺一层", "业务形态决定:商品问答不需要盖楼", "能顺带对比两张表的外键与级联策略"] }
+      ]
+    },
+    {
+      key: "cmt", title: "三、评论与楼中楼",
+      files: "models/model_comments.py · crud/comments.py · routers/comments.py",
+      qs: [
+        { t: "基础", q: "走链路:发一条楼中楼回复(parent_id 非空)从路由到落库的完整过程,包括经验值是怎么加上去的、和评论是不是同一个事务。",
+          c: ["校验父评论存在且 post_id 相同 → 构造 Comments → db.flush()(拿到 id,未提交) → crud_add_experience(+1) → 同一事务 commit → refresh 加载 author", "flush 与 commit 的区别要能讲", "父评论属于别的帖子会被 400 拦下"] },
+        { t: "进阶", q: "<code>crud_add_new_comment_into_post</code> 里先 <code>flush</code> 再 <code>commit</code> 而不是直接 commit。flush 和 commit 的区别是什么?这里为什么必须拆开?",
+          c: ["flush:把 SQL 发给数据库但不结束事务,可拿到自增 id", "commit:结束事务真正生效", "拆开是为了让「评论」和「经验+1」同生共死,且插入时先拿到 id"] },
+        { t: "报告关联", r: true, q: "<code>crud/comments.py:113</code> 的删除权限判断:<code>if orm_comment.author_uid != current_user_uid or not user.is_superuser</code>。手动推演:作者删自己的评论、管理员删别人的评论,各走哪个分支?正确写法是什么?这个 bug 的实际用户感知是什么?",
+          c: ["作者删自己的:False or True → 403,被误伤,功能等于坏了", "管理员删别人的:True or False → 通过", "正确是 and:不是作者 且 不是管理员才拦", "用户感知:只有管理员能删评论,作者永远删不掉"] },
+        { t: "面试", q: "评论列表为什么只查 <code>parent_id IS NULL</code> 的一级评论?楼中楼的 replies 是什么时候、怎么加载的?如果改成一次把所有评论平铺返回,会有什么问题?",
+          c: ["一级评论分页,楼中楼用 selectinload(Comments.replies).selectinload(Comments.author) 随一级评论批量取", "平铺会导致分页口径混乱(总数算谁)、前端渲染层级难做、二级评论挤占分页名额"] },
+        { t: "进阶", q: "统计一级评论总数的 count 和取列表的查询是两条独立 SQL。为什么 count 不直接复用带 selectinload 的那条 stmt?",
+          c: ["selectinload 会让 ORM 额外发加载关联的 SQL,count 只要数行数", "复用徒增查询与复杂度;count 只需同样的 where 条件", "能说出 count 用了独立 where(parent_id is null + post_id)"] },
+        { t: "基础", q: "Comments.parent_id 自关联外键 <code>ondelete=CASCADE</code>:删除一条一级评论时数据库层面会发生什么?这在产品上一定合理吗?",
+          c: ["楼中楼子回复被数据库级联删除", "合理性与产品有关:有的产品会保留楼中楼(软删一级评论/置空内容)", "能指出这是 DB 行为,不是 ORM 帮你删"] },
+        { t: "报告关联", r: true, q: "评论列表接口把带 author 的 ORM 直接返回,密码哈希字段就是这么混进响应的。说清楚机制,并解释 <code>routers/message.py</code> 里 <code>_user_brief()</code> 为什么没这个问题。",
+          c: ["jsonable_encoder 对 ORM 用 vars() 取全部已加载列,author 关系也在其中", "_user_brief 手工挑字段(白名单),password 天然进不去", "统一修法:所有出参走白名单或 response_model"] },
+        { t: "进阶", q: "评论 content 用 <code>String(255)</code>,帖子 content 用 <code>Text</code>。选择依据是什么?前端和后端各自该怎么配合这个长度?",
+          c: ["可预估上限用定长 varchar(有长度语义),长文本用 Text", "前端 maxlength+提示,后端 schema 加 max_length 校验", "现状 schema 是否校验了长度?没校验会发生什么(超长 500/1406)"] },
+        { t: "面试", q: "如果给评论加「软删除」(is_deleted),表、查询、权限分别要怎么改?为什么论坛产品几乎都选软删除?",
+          c: ["加 is_deleted 列;列表查询过滤或标记展示;删除接口改 UPDATE", "原因:审计追责、楼中楼上下文(父没了子还在)、误删可恢复、配合举报"] }
+      ]
+    },
+    {
+      key: "like", title: "四、点赞",
+      files: "models/model_like.py · crud/like.py · routers/like.py",
+      qs: [
+        { t: "基础", q: "走链路:<code>POST /api/likes/toggle</code> 从进入到返回,按序列出每一次数据库访问(查什么表、为什么查)。",
+          c: ["查 Posts 判存在 → 查 Like 判已赞 → 删除或插入 → commit → 路由里再查一次 Posts → 插入通知", "能看出第 5 步和第 1 步查的是同一行(重复查询)"] },
+        { t: "进阶", q: "toggle 是「先查再插/删」。用户快速双击、或两个标签页同时点赞时会发生什么?最后表里有几条记录?是谁兜住的底?",
+          c: ["两个请求都查到「未点赞」→ 都执行 INSERT → 第二个撞 uq_user_post_like 唯一约束", " IntegrityError 被全局 db_exception_handler 转成 400「数据冲突」", "兜底的是数据库唯一约束,不是代码逻辑——说清楚这就是约束优于检查的原因"] },
+        { t: "报告关联", r: true, q: "<code>crud_get_like_count</code> 把该帖全部 like 行查回内存再 <code>len()</code>。和 <code>select(func.count())</code> 差在哪?数据到什么量级这个写法会疼?",
+          c: ["全行取回:传输+构造 ORM 对象全是浪费,数据库端 count 只返回一个数", "十万行级内存与耗时都明显;热门帖天天被 count", "顺带对比 goods 的在售数量检查是同一个毛病"] },
+        { t: "进阶", q: "路由层在 toggle 之后又 <code>select</code> 了一次 Posts 发通知,而 crud_toggle_like 里已经查过同一个帖子。这算什么问题?「发通知」这件事放在路由层还是 crud 层更合适?说说你的分层观。",
+          c: ["重复查询,同一次请求查两遍同一行", "通知是业务编排不是数据访问,放 crud 层会让 like 与 notification 强耦合;更合理是路由/服务层编排,但应把 post 传下去避免重复 IO", "没有标准答案,能自圆其说+意识到重复查询即可"] },
+        { t: "基础", q: "发通知前判断了 <code>post.author_uid != user_uid</code>。这条判断防住了什么体验问题?",
+          c: ["自己赞自己,收到「有人点赞了你的帖子」的推送", "社交产品通识:自己触发、作用于自己的事件不通知"] },
+        { t: "面试", q: "帖子详情页要同时显示「点赞总数」和「我是否点过赞」。用现在的表结构最少要几次查询?能不能合成一条 SQL?有没有更进一步的反范式方案?",
+          c: ["两条:count(post_id) + exists(post_id,user_uid)", "可合成一条:SELECT COUNT + MAX(user_uid=?) 或两个子查询", "反范式:posts 加 like_count 冗余列+点赞时原子增减,代价是一致性维护"] },
+        { t: "进阶", q: "likes 表的 <code>UniqueConstraint(post_id, user_uid)</code> 一石二鸟:它同时充当了什么?这个联合索引还能顺带加速哪两类查询?",
+          c: ["防重约束本身会建 (post_id,user_uid) 唯一联合索引", "加速:按 post 统计/列出点赞(最左前缀),按 user 查「我赞过的」不行(列顺序)", "引出联合索引最左前缀原则"] }
+      ]
+    },
+    {
+      key: "ntf", title: "五、通知",
+      files: "models/model_notification.py · crud/notification.py · routers/notification.py",
+      qs: [
+        { t: "基础", q: "走完整链路:用户 A 点赞了 B 的帖子 → B 手机上看到红点 → B 点开通知列表。按顺序说出涉及的表、接口和查询。",
+          c: ["toggle_like 插 like → 路由插 notification(recipient=B) → B 端轮询/进页调 /unread_count → /list 拉列表分页", "能指出通知是「写扩散」:事件发生时就把每个人的通知行写好"] },
+        { t: "进阶", q: "<code>crud_mark_as_read</code> 用一条 <code>UPDATE ... WHERE id=? AND recipient_uid=?</code> 同时完成「改状态+校验归属」。和「先 SELECT 判断 owner 再 UPDATE」相比好在哪?这条 UPDATE 的影响行数在哪些情况下会是 0?",
+          c: ["原子、一次往返、天然防越权(条件带归属)", "rowcount=0:不存在/不是你的/已读(值未变)", "能意识到调用方现在没检查 rowcount,永远返回成功——一个小瑕疵"] },
+        { t: "报告关联", r: true, q: "举报删帖后给双方的通知 <code>post_id</code> 都传了 <code>None</code>,注释写「避免通知随帖子级联删除」。解释这条链:如果老老实实传 post_id,帖子被删时通知表会发生什么?级联方向是谁定义的?",
+          c: ["notifications.post_id 外键 ondelete=CASCADE → 帖子删除时通知被连带删光", "级联方向在外键定义处(ondelete)由建表方决定", "这是个容易忽略的「删除风暴」设计点"] },
+        { t: "进阶", q: "notif_type 的模型注释写着 <code>reply / like / system</code>,但代码里实际出现了 <code>report</code>(点赞、举报都在用)。这暴露了什么维护问题?你打算怎么治理?",
+          c: ["枚举口径只写在注释里,代码增长后漂移", "治理:常量类/Enum 集中定义,DB 加 CHECK 或继续 String 但应用层约束", "能引申到 status 字符串枚举同理"] },
+        { t: "面试", q: "<code>/unread_count</code> 是前端进页必打的接口。写出它现在的查询形态,给出你建议的复合索引(列和顺序),并用最左前缀原则解释为什么是这个顺序。",
+          c: ["WHERE recipient_uid=? AND is_read=0 → 索引 (recipient_uid, is_read)", "等值列在前;若还要按时间排序取列表则 (recipient_uid, is_read, created_time)", "单列 FK 索引也能跑,但复合索引避免回表过滤 is_read"] },
+        { t: "进阶", q: "<code>crud_add_notifications</code>(批量)和 <code>crud_add_notification</code>(单条)为什么要有两个?举报流程里哪一步依赖批量版?它保证了什么?",
+          c: ["AI 审核失败降级人工时,给所有管理员群发通知", "add_all 一次 commit:要么全部管理员都收到要么都没有,且只一次事务开销", "对比循环调单条版的问题:多次 commit、部分失败"] },
+        { t: "报告关联", r: true, q: "通知列表接口直接返回 ORM 列表(带 sender_uid/recipient_uid 原文和全部列)。对照 message 模块的 <code>_user_brief()</code>,写出你认为的通知项理想响应结构,说明每个字段给谁用。",
+          c: ["理想:id、notif_type、content、post_id、is_read、read_time、created_time、sender 摘要(uid/nickname)", "recipient 就是自己不需要返回", "呼应「出参白名单」统一改造"] },
+        { t: "基础", q: "<code>crud_get_user_notifications</code> 的 count 用了 <code>select_from(stmt.subquery())</code>。为什么把带条件的 stmt 包成子查询再 count,而不是把 where 条件重写一遍?",
+          c: ["条件复用,避免 count 与列表两处条件漂移(以后加过滤只改一处)", "代价是子查询对 MySQL 优化器通常也能展开,量级无忧", "对比 comments 模块手写两遍条件的方式,说出两种风格取舍"] }
+      ]
+    },
+    {
+      key: "msg", title: "六、实时私信(WebSocket)",
+      files: "models/model_conversation.py · models/model_message.py · crud/message.py · routers/message.py · routers/websocket.py · tools/connection.py",
+      qs: [
+        { t: "基础", q: "走链路:浏览器 <code>new WebSocket(\"/ws/chat/5?token=...\")</code> 到双方屏幕上都出现消息,按序说出每一步(握手、校验、登记、收发、落库、推送)。",
+          c: ["query_params 取 token → decode_token 验签 → crud_get_conversation 校验参与者 → connect 登记进内存字典 → while True receive_text → crud_add_message 落库 → send_to_user 对方+自己", "断开时 except WebSocketDisconnect → disconnect 清理"] },
+        { t: "面试", q: "WebSocket 鉴权为什么用 URL query 传 token,而不是像 HTTP 接口那样放 Authorization 头?这种做法引入了什么新风险?",
+          c: ["浏览器 WS API 无法自定义请求头,握手只能走 URL 或子协议", "风险:token 可能进 Nginx access log、Referer、代理日志", "缓解:短期一次性 ticket、wss、日志脱敏"] },
+        { t: "报告关联", r: true, q: "ws 路由只调了 <code>decode_token</code>。对照 <code>tools/dependencies.py</code> 里 AccessTokenBearer 的完整校验链,列出 WS 握手漏掉的每一项检查和对应的攻击场景。",
+          c: ["漏:refresh 标志校验(拿 refresh token 也能连上聊天)、JTI 黑名单(登出的 token 仍可用)、token 类型/过期虽由 PyJWT 验 exp 但黑名单没有", "攻击场景:已登出/被盗的 refresh 长期挂连接收消息", "修法:握手前复用统一的 access 校验逻辑"] },
+        { t: "进阶", q: "握手时 <code>crud_get_conversation</code> 会 <code>raise HTTPException</code>。在 WebSocket 路由里抛 HTTPException 会发生什么?和 HTTP 接口里的行为有什么本质不同?",
+          c: ["HTTP 接口:被全局异常处理器转成 JSON 响应", "WS:没有这套转换,异常直接冒泡,连接以非正常方式关闭,前端收不到 403 语义", "WS 路由应自己 close(code=1008) 并 return"] },
+        { t: "报告关联", r: true, q: "<code>ConnectionManager</code> 把 <code>{uid: [websocket]}</code> 存在进程内存里。a) uvicorn 开 4 个 worker 部署后,A 给 B 发消息会发生什么?b) 为什么说这是部署约束?要支持多进程有哪些思路?",
+          c: ["a. A 的消息落库成功,但 B 的连接登记在另一个进程里,A 进程的字典里没有 B → 推送静默丢失", "b. 内存态不可共享,是单进程假设", "思路:Redis pub/sub 广播、消息队列、粘性会话(ip_hash),或者接受单 worker 部署并写进文档"] },
+        { t: "面试", q: "<code>Depends(get_database)</code> 用在 websocket 路由上,这个 DB 会话的生命周期是多长?1000 人同时在线聊天会发生什么?你会怎么改?",
+          c: ["会话存活整个连接期(几分钟到几小时),连接断开才释放", "连接池 pool_size=10 + overflow=20,第 31 个在线用户起拿不到连接,请求挂起", "改法:WS 只用短事务——收到一条消息时临时开 session 写完就还,握手校验同理"] },
+        { t: "报告关联", r: true, q: "<code>crud_add_message</code> 里 <code>conv.updated_time = datetime.now(timezone.utc)</code>,而 Conversation 模型的 default 是 <code>datetime.now()</code>。这两处写进同一列的时间有什么差别?会话列表按 updated_time 倒序会出什么鬼现象?",
+          c: ["一个 UTC naive 一个本地 naive,差 8 小时(东八区)", "新会话(本地时间)会被旧会话(UTC 时间)压到后面,排序错乱", "这正是报告说的「时间基准混乱」的实例"] },
+        { t: "面试", q: "<code>_load_last_messages</code> 用 <code>max(Message.id) group by conversation_id</code> 再 join 回来取每个会话的最后一条消息。为什么 max(id) 可以近似「最后一条」?这个假设什么时候会破?",
+          c: ["id 自增与插入时间单调一致,最大 id 即最新", "会破:数据迁移/补录、批量导入历史、未来分库分表", "稳妥写法:按 created_time(再以 id 决胜)取;能讨论权衡即可"] },
+        { t: "进阶", q: "<code>crud_get_messages</code> 按时间倒序取一页再 <code>.reverse()</code> 转正序。前端拿到的是「最新的 50 条」。要实现聊天窗「上拉加载更早的历史」,第 2 页请求该怎么设计?为什么不改成按时间正序分页?",
+          c: ["仍按 desc 偏移翻页(第 2 页是更早的 50 条),取回 reverse 后 prepend 到列表头", "正序分页没法稳定锚定「最新」——新消息插入会让页码漂移", "能引申到游标分页(where id < last_id)更稳"] },
+        { t: "报告关联", r: true, q: "A-B 会话用 <code>_normalize_pair</code> 按 uid 排序后存 user_a &lt; user_b,并配 <code>UniqueConstraint(user_a_uid, user_b_uid)</code>。如果没有这两个设计,分别会出现什么 bug?并发首聊时唯一约束扮演什么角色?",
+          c: ["不排序:A 建的会话是 (A,B),B 那边再建是 (B,A),同一对人有两条会话,消息分裂", "不约束:并发 get-or-create 双插重复行;有了约束第二个 insert 撞 IntegrityError(被全局处理器转 400)", "识别出「规范化存储 + 数据库约束」是幂等的标准组合"] },
+        { t: "基础", q: "<code>send_to_user</code> 推给对方的是<b>裸文本</b>消息内容,而 HTTP 拉历史用的是 <code>_message_brief</code> 结构化字典。如果要把推送也升级成结构化 JSON,收发两端各要改什么?要小心什么一致性问题?",
+          c: ["发送端:json.dumps(message_brief);接收端:JSON.parse 且区分消息类型(新消息/已读回执等可扩展 type 字段)", "小心:自己回显这条与 HTTP 接口返回的字段名保持一致,否则前端两处渲染逻辑分叉"] },
+        { t: "进阶", q: "收消息循环里只捕获了 <code>WebSocketDisconnect</code>。如果某次 <code>crud_add_message</code> 因数据库抖动抛了别的异常,连接和内存字典会进入什么状态?后续谁会受伤?",
+          c: ["异常冒泡,连接被框架关闭,但 disconnect() 没执行 → 字典里留下死连接", "之后 send_to_user 给这个 uid 推送会撞死 socket 抛异常,把发送方(别人)的循环也打断", "改法:finally 里 disconnect + 循环内 try/except 单条失败不断连"] }
+      ]
+    },
+    {
+      key: "glb", title: "七、全局串联与数据库专题",
+      files: "跨模块 · 不看单个文件,看全局",
+      qs: [
+        { t: "面试", q: "项目里同时存在三种时间写法:<code>datetime.now()</code>、<code>datetime.now(timezone.utc)</code>、<code>datetime.fromtimestamp(ts)</code>。各自出现在哪几类位置?统一成 UTC 的完整方案要动哪几层?存量数据怎么办?",
+          c: ["now():模型 default(model_base 等)、updated_time;utc:crud 手写处(mark_as_read、updated_time、编辑时间);fromtimestamp:token expire_at", "方案:统一 UTC naive 或 UTC aware + DateTime(timezone=True),模型 default、手写处、过期换算全改", "存量:写一次性迁移脚本按旧时区换算"] },
+        { t: "报告关联", r: true, q: "把六个模块里所有「直接返回 ORM 对象」的接口列成一张清单(模块+函数),然后给出你的统一修复方案(response_model 还是白名单函数?),说明选它的理由和改造步骤。",
+          c: ["至少:posts 增删改查、comments 列表与新增、goods 系列、likes(无)、notifications 列表", "方案对比:response_model 声明式但每接口要配模型;白名单函数灵活但要自觉", "关键判断:出参过滤应成为默认习惯"] },
+        { t: "面试", q: "按报告建议给六张表补复合索引。每张表写出:索引列及顺序、它服务的查询形态、为什么这个顺序(等值在前/排序在后)。",
+          c: ["posts(is_top,created_time) 服务列表排序;notifications(recipient_uid,is_read,created_time);messages(conversation_id,created_time);images(target_type,target_id);goods(author_uid,status);comments(parent_id)", "原则:等值条件列在前,范围/排序列在后,最左前缀可复用"] },
+        { t: "进阶", q: "likes 和 conversations 用了 UniqueConstraint「以约束兜底并发」。总结这个模式,再在项目里找出至少一处「没有唯一约束、可以插进重复数据」的场景,并给出建约束的方案。",
+          c: ["模式:并发检查不可靠,把不变式交给数据库约束+捕获 IntegrityError", "候选:收藏 bookmark(用户+帖子)若没有则可重复收藏;商品在售数量上限无法用约束(业务规则),只能锁", "能自己找出一处即算合格"] },
+        { t: "进阶", q: "全部列表接口都用 <code>LIMIT offset, n</code> 分页。深分页(offset 很大)的问题是什么?私信历史这种「只往前翻」的场景有什么更好的方案?",
+          c: ["offset N 要扫过并丢弃前 N 行,页越深越慢", "游标分页(seek):WHERE id < 上页最小id ORDER BY id DESC LIMIT n,每页成本恒定", "能说出什么场景必须 offset(跳页)什么场景适合游标(无限滚动)"] },
+        { t: "面试", q: "<code>selectinload</code> 和 <code>joinedload</code> 的区别是什么?这个项目为什么几乎全用 selectinload?什么场景 joinedload 反而合适?",
+          c: ["selectinload:主查询后再发一条 IN 查询取关联,无笛卡尔积;joinedload:LEFT JOIN 一条 SQL,集合关系会放大行数", "列表+集合关系(replies/posts)用 selectinload 合理", "多对一(每个 post 一条 author)joinedload 一次取回更省往返"] },
+        { t: "进阶", q: "项目里大量「用字符串当枚举」:images.target_type、notifications.notif_type、goods.status。各自的合法值校验发生在哪一层?漏校验时分别会发生什么坏后果?",
+          c: ["goods.status 是 DB Enum 有兜底;target_type/notif_type 无任何校验,只在注释里", "漏校验后果:target_type 可路径穿越、notif_type 出现脏值导致前端 switch 落空", "治理:应用层 Enum/常量 + (可选)DB CHECK"] },
+        { t: "面试", q: "新需求:给论坛加「帖子标题+内容全文搜索」。现阶段(校园数据量)你会怎么做?到百万级帖子的生产环境演进路线是什么?",
+          c: ["起步:LIKE %kw%(说明为什么走不了索引),或 MySQL FULLTEXT + ngram 中文分词", "演进:单独搜索服务(ES/Meilisearch)+ binlog/CDC 同步或双写", "能给出取舍理由而非名词堆砌"] }
+      ]
+    }
+  ];
+
+  var STORE_KEY = "forum_review_answers_v1";
+  var answers = {};
+  try { answers = JSON.parse(localStorage.getItem(STORE_KEY) || "{}"); } catch (e) { answers = {}; }
+
+  var total = 0, answered = 0;
+  var quizEl = document.getElementById("quiz");
+  var saveTimer = null;
+
+  function esc(s) { return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+  function tagSpan(q) {
+    var map = { "基础": "b", "进阶": "a", "面试": "i", "报告关联": "r" };
+    var h = '<span class="qt ' + map[q.t] + '">' + q.t + "</span>";
+    if (q.r) h += ' <span class="qt r">↩ 报告关联</span>';
+    return h;
+  }
+
+  MODULES.forEach(function (m, mi) {
+    var sec = document.createElement("section");
+    var per = m.qs.filter(function (q) { return answers[m.key + "_" + m.qs.indexOf(q)]; }).length;
+    var head = document.createElement("div");
+    head.innerHTML =
+      '<div class="mod-head"><h2>' + m.title + '</h2><span class="mprog" id="mp_' + m.key + '"></span></div>' +
+      '<div class="files">' + m.files + "</div>";
+    sec.appendChild(head);
+
+    m.qs.forEach(function (q, qi) {
+      total++;
+      var id = m.key + "_" + qi;
+      var card = document.createElement("div");
+      card.className = "qcard";
+      card.innerHTML =
+        '<div class="q-top"><span class="q-no">' + (mi + 1) + "." + (qi + 1) + '</span>' +
+        '<span class="q-text">' + q.q + "</span>" + tagSpan(q) + "</div>" +
+        '<textarea id="ta_' + id + '" placeholder="在这里作答……(自动保存)"></textarea>' +
+        '<details><summary>自检点(先答完再看)</summary><ul class="check">' +
+        q.c.map(function (c) { return "<li>" + c + "</li>"; }).join("") + "</ul></details>";
+      sec.appendChild(card);
+      var ta = card.querySelector("textarea");
+      if (answers[id]) ta.value = answers[id];
+    });
+    quizEl.appendChild(sec);
+  });
+
+  document.getElementById("totalLabel").textContent = total;
+  document.getElementById("totalLabel2").textContent = total;
+
+  function refreshProgress() {
+    answered = 0;
+    MODULES.forEach(function (m) {
+      var done = 0;
+      m.qs.forEach(function (q, qi) {
+        var v = (answers[m.key + "_" + qi] || "").trim();
+        if (v) done++;
+      });
+      answered += done;
+      var el = document.getElementById("mp_" + m.key);
+      if (el) el.textContent = "已答 " + done + " / " + m.qs.length;
+    });
+    document.getElementById("doneLabel").textContent = answered;
+    document.getElementById("bar").style.width = (total ? answered / total * 100 : 0) + "%";
+  }
+  refreshProgress();
+
+  quizEl.addEventListener("input", function (e) {
+    if (e.target.tagName !== "TEXTAREA") return;
+    var id = e.target.id.slice(3);
+    answers[id] = e.target.value;
+    refreshProgress();
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(function () {
+      localStorage.setItem(STORE_KEY, JSON.stringify(answers));
+      var t = new Date();
+      document.getElementById("savedTip").textContent =
+        "已自动保存 " + t.getHours() + ":" + ("0" + t.getMinutes()).slice(-2);
+    }, 500);
+  });
+
+  function buildMarkdown() {
+    var lines = ["# 复习自测答案 · 校园论坛六大模块", "", "导出时间:" + new Date().toLocaleString("zh-CN"), "已答 " + answered + " / " + total + " 题", ""];
+    MODULES.forEach(function (m, mi) {
+      lines.push("## " + m.title, "");
+      m.qs.forEach(function (q, qi) {
+        var id = m.key + "_" + qi;
+        var plain = q.q.replace(/<code>/g, "`").replace(/<\/code>/g, "`").replace(/<b>/g, "**").replace(/<\/b>/g, "**").replace(/<[^>]+>/g, "");
+        lines.push("### " + (mi + 1) + "." + (qi + 1) + " [" + q.t + "] " + plain, "");
+        var a = (answers[id] || "").trim();
+        lines.push(a ? a : "*未作答*", "");
+      });
+    });
+    return lines.join("\n");
+  }
+
+  document.getElementById("exportBtn").addEventListener("click", function () {
+    var blob = new Blob([buildMarkdown()], { type: "text/markdown;charset=utf-8" });
+    var a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "复习自测答案_" + new Date().toISOString().slice(0, 10) + ".md";
+    a.click();
+    URL.revokeObjectURL(a.href);
+  });
+
+  document.getElementById("copyBtn").addEventListener("click", function () {
+    var md = buildMarkdown();
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(md).then(function () { alert("已复制,直接去聊天框粘贴发我即可"); },
+        function () { alert("复制失败,请用「导出答案」下载文件"); });
+    } else {
+      var ta = document.createElement("textarea");
+      ta.value = md; document.body.appendChild(ta); ta.select();
+      document.execCommand("copy"); document.body.removeChild(ta);
+      alert("已复制");
+    }
+  });
+
+  document.getElementById("clearBtn").addEventListener("click", function () {
+    if (!confirm("确定清空全部作答?此操作不可恢复。")) return;
+    answers = {};
+    localStorage.removeItem(STORE_KEY);
+    document.querySelectorAll("#quiz textarea").forEach(function (t) { t.value = ""; });
+    refreshProgress();
+    document.getElementById("savedTip").textContent = "已清空";
+  });
+})();
+</script>
+</body>
+</html>

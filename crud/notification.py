@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime
 
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -43,14 +43,15 @@ class NotificationService:
             unread_only: bool = False
     ):
         """获取用户的通知列表"""
+        # 查找指定用户的所有通知,如果要求只查找未读通知，则添加过滤条件
         stmt = select(Notification).where(Notification.recipient_uid == user_uid)
         if unread_only:
             stmt = stmt.where(Notification.is_read == False)
 
-        # 总数
+        # 计算总数的查询语句
         count_stmt = select(func.count()).select_from(stmt.subquery())
         result = await db.execute(count_stmt)
-        total = result.scalar_one_or_none()
+        total = result.scalar_one_or_none()# 用scalar_one更合理
 
         # 分页查询
         offset = (page - 1) * page_size
@@ -65,7 +66,7 @@ class NotificationService:
         stmt = (
             update(Notification)
             .where(Notification.id == notif_id, Notification.recipient_uid == user_uid)
-            .values(is_read=True, read_time=datetime.now(timezone.utc))
+            .values(is_read=True, read_time=datetime.now())
         )
         await db.execute(stmt)
         await db.commit()
@@ -76,7 +77,7 @@ class NotificationService:
         stmt = (
             update(Notification)
             .where(Notification.recipient_uid == user_uid, Notification.is_read == False)
-            .values(is_read=True, read_time=datetime.now(timezone.utc))
+            .values(is_read=True, read_time=datetime.now())
         )
         await db.execute(stmt)
         await db.commit()

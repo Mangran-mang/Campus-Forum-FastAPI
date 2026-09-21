@@ -32,16 +32,53 @@ class User(Base):
         comment="更新时间"
     )
     posts: Mapped["list[Posts]"] = relationship("Posts",back_populates="author")
-    token: Mapped["Token"] = relationship("Token",back_populates="user",uselist= False)
-    comments: Mapped[list["Comments"]] = relationship("Comments", back_populates="author")
-    goods: Mapped[list["Goods"]] = relationship("Goods", back_populates="author")
-    goods_comments: Mapped[list["GoodsComment"]] = relationship("GoodsComment", back_populates="author")
-    images: Mapped[list["Image"]] = relationship("Image", back_populates="author")
+    # ========== 用户与所有子表的关系 ==========
+    # ## 为什么每个关系都要加 passive_deletes=True（2026-09-21 实测踩出来的）
+    #
+    # SQLAlchemy 删父对象时的默认行为【不是】交给数据库级联，而是自己动手：
+    # 它会把子集合加载进来，然后对每个子行执行
+    #     UPDATE posts SET author_uid = NULL WHERE id = ...
+    # 也就是"把外键置空"。而这些列都是 NOT NULL → 直接抛
+    #     IntegrityError (1048, "Column 'author_uid' cannot be null")
+    # → 接口层表现为 400 / 500。
+    #
+    # 所以【光把数据库外键改成 ON DELETE CASCADE 是不够的】——
+    # ORM 根本不会让那条 CASCADE 生效，它自己先插了一手。
+    # passive_deletes=True 的意思是"别管子集合，交给数据库自己处理"，
+    # 这时数据库的 ON DELETE CASCADE 才能真正跑起来。
+    #
+    # （前提：这 9 个关系的对应外键都已在数据库里是 CASCADE，
+    #   见迁移 d1e2f3a4b5c6。两边必须成对改，少一边都不行。）
+    #
+    # 注意：notifications 表没有 User 上的关系（只有两个裸 FK 列），
+    # 所以它不经过 ORM，本来就直接由数据库级联处理。
+    posts: Mapped["list[Posts]"] = relationship(
+        "Posts", back_populates="author", passive_deletes=True
+    )
+    token: Mapped["Token"] = relationship(
+        "Token", back_populates="user", uselist=False, passive_deletes=True
+    )
+    comments: Mapped[list["Comments"]] = relationship(
+        "Comments", back_populates="author", passive_deletes=True
+    )
+    goods: Mapped[list["Goods"]] = relationship(
+        "Goods", back_populates="author", passive_deletes=True
+    )
+    goods_comments: Mapped[list["GoodsComment"]] = relationship(
+        "GoodsComment", back_populates="author", passive_deletes=True
+    )
+    images: Mapped[list["Image"]] = relationship(
+        "Image", back_populates="author", passive_deletes=True
+    )
     # 私信关系（按在会话中的角色分两个方向）
     conversations_as_a: Mapped[list["Conversation"]] = relationship(
-        "Conversation", foreign_keys="Conversation.user_a_uid", back_populates="user_a"
+        "Conversation", foreign_keys="Conversation.user_a_uid",
+        back_populates="user_a", passive_deletes=True
     )
     conversations_as_b: Mapped[list["Conversation"]] = relationship(
-        "Conversation", foreign_keys="Conversation.user_b_uid", back_populates="user_b"
+        "Conversation", foreign_keys="Conversation.user_b_uid",
+        back_populates="user_b", passive_deletes=True
     )
-    messages: Mapped[list["Message"]] = relationship("Message", back_populates="sender")
+    messages: Mapped[list["Message"]] = relationship(
+        "Message", back_populates="sender", passive_deletes=True
+    )

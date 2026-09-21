@@ -3,7 +3,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from config.database_config import get_database
 from crud.message import MessageService
-from schemas.message import MessageCreateModel
+from schemas.common import Envelope
+from schemas.message import (
+    ConversationCreateModel,
+    ConversationOut,
+    ConversationPageOut,
+    MessageCreateModel,
+    MessageOut,
+    MessagePageOut,
+)
+from schemas.user import UserBriefOut
 from tools.dependencies import AccessTokenBearer
 from tools.exceptions import success_response
 
@@ -13,45 +22,7 @@ message_service = MessageService()
 access_token_bearer = AccessTokenBearer()
 
 
-def _user_brief(user) -> dict | None:
-    """用户对象 → 前端展示用摘要"""
-    if not user:
-        return None
-    return {
-        "uid": str(user.uid),
-        "nickname": user.nickname,
-        "username": user.username,
-        "email": user.email,
-        "level": user.level,
-        "is_superuser": user.is_superuser,
-    }
-
-
-def _message_brief(msg) -> dict:
-    return {
-        "id": msg.id,
-        "conversation_id": msg.conversation_id,
-        "sender_uid": msg.sender_uid,
-        "content": msg.content,
-        "created_time": msg.created_time.isoformat() if msg.created_time else None,
-        "sender": _user_brief(getattr(msg, "_sender", None)),
-    }
-
-
-def _conversation_brief(conv) -> dict:
-    return {
-        "id": conv.id,
-        "user_a_uid": conv.user_a_uid,
-        "user_b_uid": conv.user_b_uid,
-        "created_time": conv.created_time.isoformat() if conv.created_time else None,
-        "updated_time": conv.updated_time.isoformat() if conv.updated_time else None,
-        "other_user": _user_brief(getattr(conv, "_other_user", None)),
-        "last_message": _message_brief(getattr(conv, "_last_message", None))
-        if getattr(conv, "_last_message", None) else None,
-    }
-
-
-@router.post("/conversation")
+@router.post("/conversation", response_model=Envelope[ConversationOut])
 async def get_or_create_conversation(
         other_uid: str = Query(..., min_length=1, max_length=36, description="对方用户uid"),
         db: AsyncSession = Depends(get_database),
@@ -60,10 +31,10 @@ async def get_or_create_conversation(
     """获取或创建与某用户的会话（幂等：已存在则直接返回）"""
     current_uid = user_details["user"]["user_uid"]
     conv = await message_service.crud_get_or_create_conversation(db, current_uid, other_uid)
-    return success_response(data=_conversation_brief(conv), message="获取成功")
+    return success_response(data=conv, message="获取成功")
 
 
-@router.get("/conversations")
+@router.get("/conversations", response_model=Envelope[ConversationPageOut])
 async def get_conversations(
         db: AsyncSession = Depends(get_database),
         page: int = Query(default=1, ge=1),
@@ -75,12 +46,11 @@ async def get_conversations(
     total, conversations = await message_service.crud_get_user_conversations(
         db, current_uid, page, page_size
     )
-    data = [_conversation_brief(c) for c in conversations]
     return success_response(
-        data={"total": total, "conversations": data}, message="获取成功", )
+        data={"total": total, "conversations": conversations}, message="获取成功", )
 
 
-@router.get("/conversations/{conv_id}/messages")
+@router.get("/conversations/{conv_id}/messages", response_model=Envelope[MessagePageOut])
 async def get_messages(
         conv_id: int,
         db: AsyncSession = Depends(get_database),
@@ -93,14 +63,13 @@ async def get_messages(
     total, messages = await message_service.crud_get_messages(
         db, conv_id, current_uid, page, page_size
     )
-    data = [_message_brief(m) for m in messages]
     return success_response(
-        data={"total": total, "messages": data, "current_uid": current_uid},
+        data={"total": total, "messages": messages, "current_uid": current_uid},
         message="获取成功",
     )
 
 
-@router.post("/conversations/{conv_id}/messages")
+@router.post("/conversations/{conv_id}/messages", response_model=Envelope[MessageOut])
 async def send_message(
         conv_id: int,
         message_data: MessageCreateModel,
@@ -112,17 +81,25 @@ async def send_message(
     msg = await message_service.crud_add_message(
         db, conv_id, current_uid, message_data.content
     )
-    return success_response(data=_message_brief(msg), message="发送成功")
+    return success_response(data=msg, message="发送成功")
 
 
-@router.get("/users/search")
+@router.get("/users/search", response_model=Envelope[list[UserBriefOut]])
 async def search_users(
         keyword: str = Query(..., min_length=1, max_length=50, description="搜索关键词"),
         db: AsyncSession = Depends(get_database),
         user_details=Depends(access_token_bearer),
 ):
-    """搜索用户（昵称/用户名/邮箱模糊匹配），用于添加私信对象"""
+    """搜索用户（昵称/用户名/邮箱模糊匹配），用于添加私信对象
+
+    ## 本次顺手修掉的问题
+    原来这里调 _user_brief()，那个函数返回 uid/nickname/username/**email**/level/is_superuser。
+    而 crud_search_users 支持按 email 模糊匹配（User.email.like(kw)）——
+    于是搜一个 "@qq.com" 就能批量捞到别人的邮箱和管理员身份，
+    等于把 8/27 修好的"防邮箱枚举"从后门重新打开。
+    现在改成走共享的 UserBriefOut（不含 email），泄露关闭；
+    搜索能力本身保留（仍可按邮箱模糊匹配），只是不回显邮箱。
+    """
     current_uid = user_details["user"]["user_uid"]
     users = await message_service.crud_search_users(db, keyword, exclude_uid=current_uid)
-    data = [_user_brief(u) for u in users]
-    return success_response(data=data, message="获取成功")
+    return success_response(data=users, message="获取成功")

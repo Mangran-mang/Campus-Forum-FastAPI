@@ -9,7 +9,7 @@
           <span v-if="otherUser?.is_superuser" class="admin-badge">管理员</span>
         </span>
       </div>
-      <span class="chat-hint">实时消息</span>
+      <span class="chat-hint" :class="{ 'chat-hint--alert': connState !== 'open' }">{{ connHint }}</span>
     </div>
 
     <div class="chat-body card">
@@ -63,7 +63,26 @@ const otherUser = ref(null)
 const myUid = ref('')
 const otherName = computed(() => otherUser.value?.nickname || otherUser.value?.username || '未知用户')
 
-let ws = null   // WebSocket 连接对象
+// ========== WebSocket 连接状态 ==========
+let ws = null                 // 当前 WebSocket 连接对象
+let reconnectTimer = null     // 重连定时器（组件卸载时必须清掉）
+let reconnectAttempts = 0     // 连续失败次数，用于指数退避
+let closedByUs = false        // 组件卸载时置 true，阻止 onclose 又去发起重连
+let everOpened = false        // 本次挂载是否成功握手过（区分"握手失败"与"连上后又断"）
+let handshakeFailures = 0     // 连续握手失败次数
+const MAX_BACKOFF = 10000     // 退避上限 10 秒
+const MAX_HANDSHAKE_FAILURES = 5   // 连续握手失败上限，超过就停手，避免无限重连
+
+// connecting=首次连接中 / open=正常 / reconnecting=断线重连中 / failed=反复握手失败
+// ## 为什么需要这个状态：原实现连接断了前端毫无感知，用户点发送只看到一句
+// ## "连接尚未就绪"，既不知道发生了什么，也没有任何自愈动作。
+const connState = ref('connecting')
+const connHint = computed(() => ({
+  connecting: '连接中…',
+  open: '实时消息',
+  reconnecting: '连接已断开，正在重连…',
+  failed: '连接失败，请刷新页面重试',
+}[connState.value]))
 
 function formatTime(t) {
   if (!t) return ''
@@ -104,34 +123,96 @@ function scrollToBottom(smooth = true) {
 async function send() {
   const content = draft.value.trim()
   if (!content || sending.value) return
+
+  // ## 为什么不再只弹一句提示：原来断线后用户只能干等，这里主动踢一次重连，
+  // ## 并且不清空草稿——用户刚打的一段字不能因为连接问题白丢。
+  if (!ws || ws.readyState !== WebSocket.OPEN) {
+    // 已经放弃重连了就别再踢一次，直接告诉用户刷新
+    if (connState.value === 'failed') {
+      alert('连接失败，请刷新页面后重试')
+      return
+    }
+    connState.value = 'reconnecting'
+    scheduleReconnect(0)          // 立即重连，不等退避
+    alert('连接已断开，正在重连，请稍后再发送')
+    return
+  }
+
   sending.value = true
   try {
     // 通过 WebSocket 发送（不再是 HTTP 接口）
-    if (!ws || ws.readyState !== 1) {   // readyState===1 表示连接已就绪
-      alert('连接尚未就绪，请稍后重试')
-      return
-    }
     ws.send(content)
-    draft.value = ''
+    draft.value = ''              // 发成功了才清空
     // 不再手动 loadMessages：后端会同时给双方推信号，自己也能收到信号后刷新
-  } catch {} finally {
+  } catch {
+    alert('发送失败，请稍后重试')   // 保留草稿，方便用户直接重发
+  } finally {
     sending.value = false
   }
 }
 
 // ========== WebSocket 实时通讯 ==========
 function connectWs() {
+  // 已在连接中(0)或已打开(1)时不重复建连，否则同一账号会多登记一条连接
+  if (ws && (ws.readyState === WebSocket.CONNECTING || ws.readyState === WebSocket.OPEN)) return
+
+  // ## token 每次都重新读，不缓存在闭包里：HTTP 层刷新过 token 后，
+  // ## 断线重连能自动拿到新的，不会拿着过期 token 反复撞 1008。
   const token = localStorage.getItem('access_token')
   // ws:// 协议，走 vite 代理到后端 8000
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-  ws = new WebSocket(`${protocol}//${window.location.host}/ws/chat/${convId}?token=${token}`)
+  const socket = new WebSocket(`${protocol}//${window.location.host}/ws/chat/${convId}?token=${token}`)
+  ws = socket
 
-  // 收到服务器推送的信号（对方发了消息）
-  ws.onmessage = () => {
-    loadMessages()   // 方案B：收到信号就刷新消息列表
+  socket.onopen = () => {
+    reconnectAttempts = 0
+    everOpened = true
+    handshakeFailures = 0
+    connState.value = 'open'
+    loadMessages()   // 断线期间对方可能发过消息，重连后补拉一次
   }
 
-  // 连接异常时回退：仍保留轮询兜底（可选，先不写）
+  // 收到服务器推送的信号（对方发了消息）——推送只当信号用，不解析内容（方案B）
+  socket.onmessage = () => {
+    loadMessages()
+  }
+
+  // onerror 之后浏览器必定还会触发 onclose，所以重连统一在 onclose 里处理，
+  // 否则 error + close 会各发起一次重连，退避计数被打乱
+  socket.onerror = () => {}
+
+  socket.onclose = async (e) => {
+    // 组件已卸载，或这已经是条被替换掉的旧连接 —— 都不是"该重连"的情形
+    if (closedByUs || socket !== ws) return
+
+    // ## 为什么不能靠 close code 判断鉴权失败（实测结论）：
+    // ## 后端在 accept 之前调用 close(1008) 时，浏览器看到的是 **HTTP 403 握手失败**
+    // ## （InvalidStatus），压根不会产生 code=1008 的 close 事件 —— 握手失败时
+    // ## 浏览器只能给 1006，拿不到服务端语义。所以改按"连续失败次数"兜底。
+    if (!everOpened) {
+      handshakeFailures++
+      if (handshakeFailures >= MAX_HANDSHAKE_FAILURES) {
+        // 反复握不上（token 失效 / 服务未就绪），继续重试没意义，让用户刷新
+        connState.value = 'failed'
+        return
+      }
+    }
+
+    // 网络中断（拔网线/切 WiFi/休眠）会走这里，close code 通常是 1006
+    connState.value = 'reconnecting'
+    scheduleReconnect()
+  }
+}
+
+// 指数退避重连：1s → 2s → 4s → 8s → 10s 封顶，避免服务端挂掉时被高频重试压垮
+function scheduleReconnect(delay) {
+  if (closedByUs || reconnectTimer) return      // 已有待执行的重连就别排第二个
+  const wait = delay === undefined ? Math.min(1000 * 2 ** reconnectAttempts, MAX_BACKOFF) : delay
+  reconnectAttempts++
+  reconnectTimer = setTimeout(() => {
+    reconnectTimer = null
+    connectWs()
+  }, wait)
 }
 
 onMounted(() => {
@@ -140,7 +221,15 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
-  if (ws) ws.close()   // 关页面时关闭连接（替代原来的 clearInterval）
+  // ## 顺序很重要：先置 closedByUs，再 close()。否则 close() 触发的 onclose
+  // ## 会看到 closedByUs 还是 false，于是又排一个重连 —— 离开页面后仍偷偷连。
+  closedByUs = true
+  if (reconnectTimer) {
+    clearTimeout(reconnectTimer)
+    reconnectTimer = null
+  }
+  if (ws) ws.close()
+  ws = null
 })
 </script>
 
@@ -189,6 +278,11 @@ onUnmounted(() => {
 .chat-hint {
   font-size: 12px;
   color: var(--text-muted);
+}
+/* 断线/重连提示不属于装饰信息，移动端也必须能看到（见下方 media query 的例外） */
+.chat-hint--alert {
+  color: #f0a020;
+  font-weight: 600;
 }
 .chat-body {
   flex: 1;
@@ -256,7 +350,8 @@ onUnmounted(() => {
   .msg-bubble {
     max-width: 82%;
   }
-  .chat-hint {
+  /* 只隐藏"实时消息"这类装饰文案，断线提示要留着 */
+  .chat-hint:not(.chat-hint--alert) {
     display: none;
   }
 }

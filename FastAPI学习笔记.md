@@ -206,7 +206,7 @@ mapped_column的作用和Field它们类似，但它用于数据库表中的限�
 
 ##### 进阶内容
 
-###### 其他参数：
+###### __table_args__：
 
 ```
 class Bookmark(Base):
@@ -225,6 +225,10 @@ class Bookmark(Base):
 ```
 
 这里用到了__table_args__，里面的参数UniqueConstraint限制了一个post_id对应一个user_uid
+
+__table_args__是专门用来收纳一些关系级的约束诸如复合约束\复合索引\表引擎\字符集
+
+我们也可以写成Index("复合列名","a","b")
 
 ###### 关系映射:
 

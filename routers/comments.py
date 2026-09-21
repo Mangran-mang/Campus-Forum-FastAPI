@@ -6,7 +6,8 @@ from config.database_config import get_database
 from crud.comments import CommentsService
 from crud.notification import NotificationService
 from models.model_posts import Posts
-from schemas.comments import CommentsCreateModel
+from schemas.comments import CommentsCreateModel, CommentOut, CommentPageOut
+from schemas.common import Envelope
 from tools.dependencies import AccessTokenBearer,get_user_by_token
 from tools.exceptions import success_response
 
@@ -16,7 +17,7 @@ commentsservice = CommentsService()
 notificationservice = NotificationService()
 access_token_bearer = AccessTokenBearer()
 
-@router.post("/addcomment")
+@router.post("/addcomment", response_model=Envelope[CommentOut])
 async def add_new_comment(
         comment_data:CommentsCreateModel,
         db:AsyncSession=Depends(get_database),
@@ -63,7 +64,7 @@ async def add_new_comment(
 
     return success_response(data=comment, message="添加成功")
 
-@router.get("/getcomments")
+@router.get("/getcomments", response_model=Envelope[CommentPageOut])
 async def get_comments_list(
         post_id:int,
         db:AsyncSession=Depends(get_database),
@@ -72,6 +73,15 @@ async def get_comments_list(
 ):
     """
     获取评论列表
+
+    ## 本次修掉的 total bug（9/4 记录至今）
+    原来只返回了评论列表本身，total 被丢掉：
+        return success_response(data=comments_list, ...)
+    而前端读的是 res.total（平级），永远是 undefined → 0，
+    表现为标题显示"评论 (0)"、分页条也永远不出现。
+    现在把 total 收进 data，前端同步改读 res.data.total / res.data.comments。
+
+    has_more 仍保留原样（它本来就没被用到，前端靠 total 算页数）。
     """
     total,comments_list = await commentsservice.crud_get_comments_by_post_id(
         db,
@@ -81,9 +91,10 @@ async def get_comments_list(
     )
     has_more = total > page * page_size# 暂未用到
     return success_response(
-        data=comments_list, message=f"成功查询到帖子{post_id}", )
+        data={"total": total, "comments": comments_list},
+        message=f"成功查询到帖子{post_id}", )
 
-@router.delete("/deletecomment")
+@router.delete("/deletecomment", response_model=Envelope[bool])
 async def delete_comment(
         comment_id:int,
         db:AsyncSession=Depends(get_database),

@@ -6,7 +6,8 @@ from config.database_config import get_database
 from crud.like import LikeService
 from crud.notification import NotificationService
 from models.model_posts import Posts
-from schemas.like import LikeActionModel
+from schemas.common import Envelope
+from schemas.like import LikeActionModel, LikeStatusOut, LikeCountOut
 from tools.dependencies import AccessTokenBearer
 from tools.exceptions import success_response
 
@@ -17,7 +18,7 @@ notificationservice = NotificationService()
 access_token_bearer = AccessTokenBearer()
 
 
-@router.post("/toggle")
+@router.post("/toggle", response_model=Envelope[LikeStatusOut])
 async def toggle_like(
         like_data: LikeActionModel,
         db: AsyncSession = Depends(get_database),
@@ -45,7 +46,7 @@ async def toggle_like(
         data={"liked": result["liked"]}, message=result["message"], )
 
 
-@router.get("/count/{post_id}")
+@router.get("/count/{post_id}", response_model=Envelope[LikeCountOut])
 async def get_like_count(
         post_id: int,
         db: AsyncSession = Depends(get_database),
@@ -55,7 +56,7 @@ async def get_like_count(
     return success_response(data={"count": count}, message="获取成功")
 
 
-@router.get("/check/{post_id}")
+@router.get("/check/{post_id}", response_model=Envelope[LikeStatusOut])
 async def check_user_liked(
         post_id: int,
         db: AsyncSession = Depends(get_database),

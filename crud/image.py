@@ -18,6 +18,14 @@ MAX_DIMENSION = 1600             # 长边最大 1600px
 JPEG_QUALITY = 80                # JPEG 压缩质量（0-100）
 WEBP_QUALITY = 75                # WebP 质量
 BASE_UPLOAD_DIR = Path(__file__).resolve().parent.parent / "uploads"
+"""
+写起注释就发狠了忘情了停不下来了
+好的
+__file__是python内置变量，表示当前文件的路径
+Path 类是 Python 标准库中的一个类，用于处理文件系统路径
+resolve() 方法用于将路径转换为绝对路径，清理掉符号链接
+parent 属性用于获取路径的父目录
+"""
 
 
 def _compress_image(content: bytes, content_type: str) -> bytes:
@@ -26,6 +34,9 @@ def _compress_image(content: bytes, content_type: str) -> bytes:
         return content  # 不动 GIF
 
     img = PILImage.open(io.BytesIO(content))
+    # content是我们拿到的二进制数据
+    # io.BytesIO(content)把二进制数据content加载到内存，然后PILImage.open打开
+    # 返回了一个Image对象给img变量
 
     # 转换为 RGB（JPEG 不支持 RGBA/P）
     if img.mode in ("RGBA", "P", "LA"):
@@ -114,9 +125,16 @@ class ImageService:
 
         # UUID 重命名 + 按子目录分存
         ext = os.path.splitext(file.filename or ".jpg")[1] or ".jpg"
+        # 将文件名拆分成 主文件名 和 扩展名 两部分，返回一个元组
         filename = f"{uuid.uuid4().hex}{ext}"
-        subdir = BASE_UPLOAD_DIR / target_type#target_type是目标路径
+        if target_type != "post" and target_type != "goods":# 加了一个白名单,也可以在orm层用枚举来限制
+            raise HTTPException(status_code=400, detail="目标文件夹禁止上传图片")
+        subdir = BASE_UPLOAD_DIR / target_type#target_type是目标路径,遗留问题3
+        # /是运算符重载，而Path类把/定义成了拼接路径
+        # Path("uploads") / "post"等价于旧写法 os.path.join("uploads", "post")
         subdir.mkdir(parents=True, exist_ok=True)
+        # 第一个参数是父目录不存在的话一起建
+        # 第二个参数是目录已存在时不报错
         (subdir / filename).write_bytes(content)
 
         # 写入数据库（filename 不含子目录，前端拼接时用 target_type）
@@ -165,7 +183,7 @@ class ImageService:
         # 删除磁盘文件（按子目录找）
         filepath = BASE_UPLOAD_DIR / image.target_type / image.filename
         if filepath.exists():
-            filepath.unlink()
+            filepath.unlink()# 在本地删除文件，相对于os.remove()
 
         await db.delete(image)
         await db.commit()

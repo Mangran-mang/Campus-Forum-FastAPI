@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>项目评估报告 · 校园论坛（MyFastAPIproject）</title>
+<style>
+  :root {
+    --primary: #e8582a;
+    --primary-soft: #fdf0ea;
+    --ink: #1f2430;
+    --ink-2: #4a5262;
+    --ink-3: #8a92a3;
+    --bg: #f5f6f8;
+    --card: #ffffff;
+    --line: #e6e9ef;
+    --good: #1a9e6c;
+    --warn: #d98a00;
+    --bad: #d64545;
+    --radius: 14px;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: "Microsoft YaHei", "PingFang SC", "Segoe UI", sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    line-height: 1.75;
+    padding-bottom: 60px;
+  }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 20px; }
+
+  /* ---------- 头部 ---------- */
+  header {
+    background: linear-gradient(135deg, #232a3a 0%, #3a3f55 60%, #5a3b2e 100%);
+    color: #fff;
+    padding: 44px 0 96px;
+  }
+  header .tag {
+    display: inline-block;
+    background: rgba(255,255,255,.14);
+    border: 1px solid rgba(255,255,255,.25);
+    border-radius: 999px;
+    padding: 3px 14px;
+    font-size: 12.5px;
+    letter-spacing: 1px;
+    margin-bottom: 14px;
+  }
+  header h1 { font-size: 30px; font-weight: 700; }
+  header p.sub { color: rgba(255,255,255,.72); margin-top: 8px; font-size: 14px; }
+
+  .overall-bar {
+    margin-top: -72px;
+    background: var(--card);
+    border-radius: var(--radius);
+    box-shadow: 0 12px 40px rgba(20,25,40,.14);
+    padding: 26px 30px;
+    display: flex;
+    align-items: center;
+    gap: 30px;
+    flex-wrap: wrap;
+  }
+  .overall-score { text-align: center; min-width: 150px; }
+  .overall-score .num {
+    font-size: 52px; font-weight: 800; color: var(--primary); line-height: 1;
+  }
+  .overall-score .num small { font-size: 20px; color: var(--ink-3); font-weight: 600; }
+  .overall-score .grade {
+    margin-top: 4px; font-size: 13px; color: var(--ink-2); font-weight: 600;
+  }
+  .overall-desc { flex: 1; min-width: 260px; font-size: 14px; color: var(--ink-2); }
+  .overall-desc b { color: var(--ink); }
+  .meta-chips { display: flex; gap: 8px; flex-wrap: wrap; }
+  .chip {
+    background: var(--primary-soft); color: #b34317;
+    font-size: 12.5px; font-weight: 600;
+    border-radius: 8px; padding: 5px 12px;
+  }
+  .chip.gray { background: #eef0f4; color: var(--ink-2); }
+
+  /* ---------- 通用卡片 ---------- */
+  section { margin-top: 34px; }
+  h2.section-title {
+    font-size: 20px; margin-bottom: 6px; display: flex; align-items: center; gap: 10px;
+  }
+  h2.section-title::before {
+    content: ""; width: 5px; height: 20px; border-radius: 3px; background: var(--primary);
+  }
+  p.section-sub { color: var(--ink-3); font-size: 13px; margin-bottom: 18px; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: var(--radius); padding: 24px 26px;
+  }
+
+  /* ---------- 分数卡网格 ---------- */
+  .score-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px;
+  }
+  .score-card {
+    background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 18px 20px 16px; position: relative; overflow: hidden;
+    transition: transform .15s ease, box-shadow .15s ease;
+  }
+  .score-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(20,25,40,.08); }
+  .score-card h3 { font-size: 14.5px; color: var(--ink-2); font-weight: 600; }
+  .score-card .val { font-size: 34px; font-weight: 800; margin: 4px 0 8px; }
+  .score-card .bar {
+    height: 6px; border-radius: 4px; background: #eef0f4; overflow: hidden;
+  }
+  .score-card .bar i { display: block; height: 100%; border-radius: 4px; }
+  .score-card .note { font-size: 12px; color: var(--ink-3); margin-top: 8px; }
+
+  .lvl-good { color: var(--good); } .lvl-mid { color: var(--warn); } .lvl-low { color: var(--bad); }
+  .bg-good { background: linear-gradient(90deg, #2fb583, #1a9e6c); }
+  .bg-mid  { background: linear-gradient(90deg, #f0b13c, #d98a00); }
+  .bg-low  { background: linear-gradient(90deg, #e26d6d, #d64545); }
+
+  /* ---------- 雷达图 + 分布 ---------- */
+  .overview-flex { display: flex; gap: 22px; flex-wrap: wrap; align-items: stretch; }
+  .radar-box { flex: 0 0 380px; display: flex; align-items: center; justify-content: center; }
+  .radar-box svg { width: 100%; max-width: 380px; height: auto; }
+  .legend-box { flex: 1; min-width: 300px; display: flex; flex-direction: column; justify-content: center; gap: 10px; }
+  .legend-row { display: flex; align-items: center; gap: 12px; font-size: 13.5px; }
+  .legend-row .name { width: 150px; color: var(--ink-2); flex-shrink: 0; }
+  .legend-row .track { flex: 1; height: 8px; background: #eef0f4; border-radius: 5px; overflow: hidden; }
+  .legend-row .track i { display: block; height: 100%; border-radius: 5px; }
+  .legend-row .v { width: 34px; text-align: right; font-weight: 700; }
+
+  /* ---------- 维度详情 ---------- */
+  .dim { margin-bottom: 18px; }
+  .dim-head { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; }
+  .dim-head h3 { font-size: 17px; }
+  .dim-badge {
+    font-size: 15px; font-weight: 800; border-radius: 8px; padding: 2px 12px;
+  }
+  .dim-badge.good { background: #e5f6ef; color: var(--good); }
+  .dim-badge.mid  { background: #fdf3e0; color: var(--warn); }
+  .dim-badge.low  { background: #fdeaea; color: var(--bad); }
+  .dim-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 14px; }
+  @media (max-width: 760px) { .dim-grid { grid-template-columns: 1fr; } }
+  .dim-col h4 {
+    font-size: 13.5px; margin-bottom: 8px; display: flex; align-items: center; gap: 6px;
+  }
+  .dim-col h4.plus { color: var(--good); }
+  .dim-col h4.minus { color: var(--bad); }
+  .dim-col ul { list-style: none; }
+  .dim-col li {
+    font-size: 13.5px; color: var(--ink-2); padding: 6px 0 6px 18px; position: relative;
+    border-bottom: 1px dashed #f0f1f4;
+  }
+  .dim-col li:last-child { border-bottom: none; }
+  .dim-col li::before {
+    content: ""; position: absolute; left: 2px; top: 14px;
+    width: 7px; height: 7px; border-radius: 2px;
+  }
+  .dim-col.plus-list li::before { background: #7fd3b0; }
+  .dim-col.minus-list li::before { background: #eda3a3; }
+  .dim-col code {
+    background: #f3f4f7; border: 1px solid #e8eaef; border-radius: 5px;
+    font-size: 12px; padding: 1px 6px; color: #444d63;
+    font-family: Consolas, "Courier New", monospace; white-space: nowrap;
+  }
+  .dim-evidence {
+    margin-top: 14px; background: #f8f9fb; border: 1px solid var(--line);
+    border-radius: 10px; padding: 12px 16px; font-size: 13px; color: var(--ink-2);
+  }
+  .dim-evidence b { color: var(--ink); }
+  .dim-evidence pre {
+    background: #0f172a; color: #e2e8f0; border-radius: 8px; padding: 10px 14px;
+    font-size: 12.5px; font-family: Consolas, "Courier New", monospace;
+    overflow-x: auto; margin: 8px 0 2px; line-height: 1.6;
+  }
+
+  /* ---------- 建议表 ---------- */
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: #f8f9fb; color: var(--ink-2); font-weight: 600; font-size: 12.5px; white-space: nowrap; }
+  td .p {
+    display: inline-block; border-radius: 6px; padding: 1px 10px; font-size: 12px; font-weight: 700; white-space: nowrap;
+  }
+  .p0 { background: #fdeaea; color: var(--bad); }
+  .p1 { background: #fdf3e0; color: var(--warn); }
+  .p2 { background: #e8f1fd; color: #2f6fd0; }
+  td code {
+    background: #f3f4f7; border: 1px solid #e8eaef; border-radius: 5px;
+    font-size: 12px; padding: 1px 6px; color: #444d63;
+    font-family: Consolas, "Courier New", monospace;
+  }
+
+  footer {
+    margin-top: 44px; text-align: center; color: var(--ink-3); font-size: 12.5px;
+  }
+  footer .line { width: 60px; height: 3px; background: var(--line); margin: 0 auto 14px; border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <span class="tag">CODE REVIEW · PROJECT ASSESSMENT</span>
+    <h1>「校园论坛 + 二手交易」项目评估报告</h1>
+    <p class="sub">FastAPI (async) + SQLAlchemy 2 + MySQL + Redis + Alembic ｜ Vue 3 + Vite</p>
+    <p class="sub">评估日期：2026-09-05 ｜ 评估范围：后端约 60 个 Python 模块（routers / crud / models / schemas / tools / config / ai_agent）、前端 Vue3 源码、13 个 Alembic 迁移、配置与文档</p>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <!-- 总评 -->
+  <div class="overall-bar">
+    <div class="overall-score">
+      <div class="num">6.0<small> / 10</small></div>
+      <div class="grade">综合评级：及格（亮点明确，但存在必须整改的安全漏洞）</div>
+    </div>
+    <div class="overall-desc">
+      <b>认证体系是全仓库最亮眼的部分</b>：refresh 轮换 + SHA-256 哈希落存 + JTI 黑名单的组合在同类作品中罕见，且已真实部署上线（zcfe.online）。但两个
+      <b>已运行验证的高危漏洞</b>（密码哈希随响应泄漏、is_superuser 自助提权）、<b>零自动化测试</b>与<b>零显式索引设计</b>把整体拉回及格线。
+      <b>项目含金量</b>受选题高频与完成度缺角拖累（6.5）；<b>项目深度</b>停留在框架追随层，且异步理解存在一处明显裂缝（6.0）。公开前请先完成下文 P0 两项整改。
+    </div>
+    <div class="meta-chips">
+      <span class="chip">✓ 已上线 zcfe.online</span>
+      <span class="chip gray">后端约 4,000 行</span>
+      <span class="chip gray">17 表 · 13 迁移</span>
+      <span class="chip gray">WebSocket 实时私信</span>
+      <span class="chip gray">✗ 零自动化测试</span>
+    </div>
+  </div>
+
+  <!-- 维度总览 -->
+  <section>
+    <h2 class="section-title">九维度评分总览</h2>
+    <p class="section-sub">雷达图与条形分布 · 每项满分 10 分</p>
+    <div class="card overview-flex">
+      <div class="radar-box">
+        <svg id="radar" viewBox="0 0 400 400" role="img" aria-label="九维度雷达图"></svg>
+      </div>
+      <div class="legend-box" id="legend"></div>
+    </div>
+    <div style="height:14px"></div>
+    <div class="score-grid" id="scoreGrid"></div>
+  </section>
+
+  <!-- 维度详情 -->
+  <section>
+    <h2 class="section-title">维度详情与评分依据</h2>
+    <p class="section-sub">评分基于逐文件通读、git 跟踪状态核查、项目 venv 内实测序列化行为（复现密码哈希泄漏）、以及更新日志与 README 的交叉核对</p>
+
+    <!-- 1 代码规范 -->
+    <div class="card dim">
+      <div class="dim-head">
+        <h3>① 代码规范程度</h3><span class="dim-badge good">7.0</span>
+      </div>
+      <div class="dim-grid">
+        <div class="dim-col plus-list">
+          <h4 class="plus">✓ 做得好的</h4>
+          <ul>
+            <li>六层结构（<code>routers / crud / models / schemas / tools / config</code>）严格执行，13 个业务模块一一对应，按目录即可定位功能</li>
+            <li>注释写「为什么」而非复述代码：<code>tools/security.py</code> 用三段式论证 refresh token 为何用 SHA-256 而非 bcrypt、为何不需要盐；<code>tools/exceptions.py</code> 开头整屏约定统一响应结构</li>
+            <li>ORM 全部使用 SQLAlchemy 2.0 <code>Mapped[...] / mapped_column</code> 新式标注，每个字段带 <code>comment</code>，数据库可读性好</li>
+            <li>统一响应 <code>{code, message, data}</code> 由 <code>success_response / error_response</code> 强制约束，杜绝各接口拼字典的不一致</li>
+          </ul>
+        </div>
+        <div class="dim-col minus-list">
+          <h4 class="minus">✗ 不足</h4>
+          <ul>
+            <li>命名不统一：用户/帖子服务用 <code>crud_</code> 前缀，商品服务却是 <code>get_all_goods / add_goods</code>；实例命名 <code>postservice / user_service / userservice</code> 三种写法并存</li>
+            <li>死代码未清理：<code>tools/middleware.py</code> 注释掉的旧鉴权中间件、<code>tools/security.py:44</code> 的 <code>print("这里！！！！！")</code> 调试残留、<code>model_user.py</code> 注释掉的头像字段</li>
+            <li>仓库无任何 Lint/Format 配置（ruff、black 均未引入）；<code>requirements.lock</code> 里装了 pycodestyle 却没有脚本或 CI 去跑它</li>
+          </ul>
+        </div>
+      </div>
+      <div class="dim-evidence"><b>证据：</b>逐目录通读全部模块；grep 确认调试 print 残留位于 security.py；异常处理器 MRO 一次注册覆盖全部子类（<code>main.py:27</code> 注释解释了原理），体现对框架机制的真实理解而非照抄模板。</div>
+    </div>
+
+    <!-- 2 配置可读性 -->
+    <div class="card dim">
+      <div class="dim-head">
+        <h3>② 配置的新手可读性</h3><span class="dim-badge mid">6.5</span>
+      </div>
+      <div class="dim-grid">
+        <div class="dim-col plus-list">
+          <h4 class="plus">✓ 做得好的</h4>
+          <ul>
+            <li>所有配置收敛到 <code>config/config.py</code> 的 pydantic <code>Settings</code> 单一真相源，<code>.env</code> 每项有中文注释，Redis 有默认值兜底</li>
+            <li>连「为什么要实例化 Settings 才会读 env」这种新手困惑都写进注释；连接池四个参数（pool_size / max_overflow / pool_recycle / pool_pre_ping）逐一注明用途</li>
+            <li><code>.env</code> 已被 .gitignore 覆盖且未入库（已验证 <code>git ls-files</code>），密钥不随仓库泄漏；<code>requirements.lock</code> 全量锁版本可复现安装</li>
+          </ul>
+        </div>
+        <div class="dim-col minus-list">
+          <h4 class="minus">✗ 不足</h4>
+          <ul>
+            <li><b>没有 <code>.env.example</code> 模板</b>：新人克隆后不知道必填哪些变量，要等运行时 <code>ValidationError: JWT_SECRET</code> 才能反推</li>
+            <li>README 快速开始写 <code>pip install -r requirements.txt</code>，仓库里实际只有 <code>requirements.lock</code>——照抄命令直接失败</li>
+            <li><code>alembic.ini</code> 被 .gitignore 忽略，新克隆缺迁移配置；无 dev/prod 环境分离概念；<code>CORS_ORIGINS</code> 注释未说明多域名格式</li>
+          </ul>
+        </div>
+      </div>
+      <div class="dim-evidence"><b>证据：</b>按 README 从零克隆推演一遍：requirements.txt 文件名对不上、.env 必填项靠报错反推、alembic.ini 缺失——新手前 30 分钟会连续踩三个坑，而这些都能用一个模板文件解决。</div>
+    </div>
+
+    <!-- 3 索引优化 -->
+    <div class="card dim">
+      <div class="dim-head">
+        <h3>③ 数据库索引优化的大概水平</h3><span class="dim-badge low">4.0</span>
+      </div>
+      <div class="dim-grid">
+        <div class="dim-col plus-list">
+          <h4 class="plus">✓ 做得好的（缓解因素）</h4>
+          <ul>
+            <li>查询层意识不错：列表页 <code>selectinload</code> 预加载避免 N+1；分页 limit/offset；计数与列表拆成两条 SQL</li>
+            <li>现有索引全部来自「免费」来源：主键、<code>user.email</code> 唯一约束、<code>likes(post_id, user_uid)</code> 联合唯一、MySQL InnoDB 为外键自动建的列索引——单列等值查询尚有覆盖</li>
+            <li>当前校园规模数据量小，问题尚未暴露</li>
+          </ul>
+        </div>
+        <div class="dim-col minus-list">
+          <h4 class="minus">✗ 不足（热查询与索引不匹配）</h4>
+          <ul>
+            <li>全部 17 张模型<b>没有一处显式索引</b>（<code>index=True</code> 与 <code>Index(...)</code> 均无，已全局搜索确认）</li>
+            <li>帖子列表按 <code>is_top DESC, created_time DESC</code> 排序（<code>crud/posts.py:53</code>）→ 全表扫描 + filesort</li>
+            <li>通知中心高频查 <code>(recipient_uid, is_read)</code> + 时间排序、未读计数（<code>crud/notification.py:85</code>），缺 <code>(recipient_uid, is_read, created_time)</code></li>
+            <li>私信消息缺 <code>(conversation_id, created_time)</code>；图片表缺 <code>(target_type, target_id)</code>；商品缺 <code>(author_uid, status)</code>；楼中楼缺 <code>comments(parent_id)</code></li>
+          </ul>
+        </div>
+      </div>
+      <div class="dim-evidence"><b>证据：</b>属于「零主动索引设计」水平。帖子列表、通知、私信三类页面在十万行级会明显退化；好在补救成本低——一次性补 5~6 个复合索引，走 Alembic 迁移即可。</div>
+    </div>
+
+    <!-- 4 模块解耦 -->
+    <div class="card dim">
+      <div class="dim-head">
+        <h3>④ 模块解耦程度</h3><span class="dim-badge good">7.0</span>
+      </div>
+      <div class="dim-grid">
+        <div class="dim-col plus-list">
+          <h4 class="plus">✓ 做得好的</h4>
+          <ul>
+            <li>依赖方向健康：<code>routers → crud → models</code>，传输结构由 schemas 隔离；<code>main.py</code> 63 行纯装配（路由/异常/中间件注册一眼可读）</li>
+            <li>横切能力沉淀在 tools 层（认证、异常、日志、WebSocket 连接管理），通知服务被点赞/评论/举报多模块复用，AI 审核独立成 <code>ai_agent</code> 包</li>
+            <li>经验值/等级更新与发帖、评论放进<b>同一事务</b>（<code>crud/posts.py:21-25</code> 先 flush 后 commit，注释明确设计意图），事务意识超出学习项目平均水准</li>
+          </ul>
+        </div>
+        <div class="dim-col minus-list">
+          <h4 class="minus">✗ 不足</h4>
+          <ul>
+            <li>crud 层反向依赖 Web 框架：直接 <code>raise HTTPException</code>（<code>crud/user.py:38</code>、<code>crud/posts.py:101</code>）——已有 <code>UserException/PostException</code> 体系却未贯彻，换框架或写 CLI 脚本时全部要重写</li>
+            <li>部分路由越层：<code>routers/posts.py:76-80</code> 在路由里直接改 <code>view_count</code> 并 commit；<code>routers/posts.py:93</code> 手动二次调用 <code>get_user_by_token</code> 绕过依赖注入体系</li>
+            <li><code>ConnectionManager</code> 把 WS 连接存<b>进程内存字典</b>，与多 worker 部署隐式冲突且无任何文档标注——多进程下推送会静默失效</li>
+          </ul>
+        </div>
+      </div>
+      <div class="dim-evidence"><b>证据：</b>边界在多数场景真实生效（schemas 隔离、tools 复用），但数据层对 FastAPI 的依赖是系统性选择而非个别疏漏，属于「分层执行到位、边界纪律不稳」的典型形态。</div>
+    </div>
+
+    <!-- 5 健壮性 -->
+    <div class="card dim">
+      <div class="dim-head">
+        <h3>⑤ 代码健壮程度</h3><span class="dim-badge mid">5.5</span>
+      </div>
+      <div class="dim-grid">
+        <div class="dim-col plus-list">
+          <h4 class="plus">✓ 做得好的</h4>
+          <ul>
+            <li>全局异常体系完整：APIException 基类 + 五个子类，MRO 一次注册全覆盖；422 重排为 <code>{field, message}</code> 方便表单回显；DB 异常只回传结论性文案，原始 SQL 只进日志</li>
+            <li>降级路径有意识设计过：Redis 故障时黑名单放行并注明风险；AI 审核失败自动转人工通知管理员（<code>routers/posts.py:145-162</code>）</li>
+            <li>上传流式限额（边读边断）+ Pillow 重编码丢 <code>asyncio.to_thread</code> 不阻塞循环；登录用 DUMMY_HASH 对齐时间防时序侧信道（<code>routers/user.py:31</code>）</li>
+          </ul>
+        </div>
+        <div class="dim-col minus-list">
+          <h4 class="minus">✗ 不足（含已验证的逻辑错误）</h4>
+          <ul>
+            <li><b>零自动化测试</b>：全仓库无 <code>test_*.py</code>，回归全靠手工点测</li>
+            <li><b>评论删除权限条件写反（已核实）</b>：<code>crud/comments.py:113</code> 的 <code>or</code> 应为 <code>and</code>——现在作者本人删自己的评论被 403 拒绝，只有管理员能删</li>
+            <li><b>同步 AI 调用阻塞事件循环</b>：2~5 秒的 <code>review_model.invoke()</code> 直接跑在 async 路由里（<code>routers/posts.py:141</code>），单个举报卡住整个服务</li>
+            <li>浏览量读-改-写非原子（并发丢计数）且在 GET 里 commit；资料更新把密码明文落库破坏后续登录；WS 握手对会话不存在无防护（<code>conv.user_b_uid</code> 直接 AttributeError）；登录无限流</li>
+          </ul>
+        </div>
+      </div>
+      <div class="dim-evidence"><b>证据：</b>更新日志所称「所有接口完成测试」实为人工点测。权限写反这类错误恰好是单测最该兜住的对象——健壮性的最大短板不是写错某一行，而是没有任何网防止住已写错的行。</div>
+    </div>
+
+    <!-- 6 安全 -->
+    <div class="card dim">
+      <div class="dim-head">
+        <h3>⑥ 用户信息安全性</h3><span class="dim-badge low">5.0</span>
+      </div>
+      <div class="dim-grid">
+        <div class="dim-col plus-list">
+          <h4 class="plus">✓ 做得好的（超出学习项目平均水准）</h4>
+          <ul>
+            <li>双 Token 体系完整：access 1h / refresh 2d、类型互斥校验（拿 access 调刷新接口会被拒）</li>
+            <li><b>refresh 轮换 + SHA-256 哈希落库</b>（2026-09-04 改造）：库里绝不存原始 token，轮换时旧 refresh 因哈希比对失败自动作废，泄露凭证只有一次利用窗口；注释完整论证 bcrypt vs SHA-256 的取舍</li>
+            <li>JTI + Redis 黑名单让登出立即生效；统一异常处理器确保 SQL 细节/堆栈不回传前端；<code>.env</code> 不入库</li>
+            <li>图片上传安全五件套：MIME 白名单、Content-Length 预检 + 流式限额、Pillow 重编码（杀伪装载荷）、UUID 重命名 + 子目录、数量与属主校验</li>
+          </ul>
+        </div>
+        <div class="dim-col minus-list">
+          <h4 class="minus">✗ 不足（按风险排序）</h4>
+          <ul>
+            <li><b>高危 · 密码哈希随响应泄漏（已运行验证）</b>：帖子/评论/商品路由直接返回带 <code>selectinload(author)</code> 的 ORM 且无 <code>response_model</code>——实测 <code>jsonable_encoder</code> 输出中作者的 <code>password</code> 哈希与 email 原样下发给任何登录用户</li>
+            <li><b>高危 · mass assignment 自助提权</b>：注册/更新模型暴露 <code>is_superuser</code>，crud 直接 <code>User(**model_dump())</code> / 逐字段 <code>setattr</code>——请求体带 <code>"is_superuser": true</code> 即成管理员</li>
+            <li>中危：WebSocket 握手只验签名——不校验 refresh 标志（refresh token 可建连）、不查 JTI 黑名单（已登出 token 仍可收发私信）</li>
+            <li>登录无限流可暴力尝试；<code>/api/user/all</code> 向管理员返回全量用户邮箱（有权限门但宜脱敏）</li>
+          </ul>
+        </div>
+      </div>
+      <div class="dim-evidence">
+        <b>证据：</b>用项目 venv 实测序列化行为：
+        <pre>POST KEYS:  [..., 'author', 'author_uid', 'content', ...]
+AUTHOR KEYS: ['created_time', 'email', ..., <b style="color:#f87171">'password'</b>, ...]
+PASSWORD LEAKED: True  'HASHED_SECRET'</pre>
+        讽刺的是 <code>routers/message.py</code> 的 <code>_user_brief()</code> 已有正确的白名单序列化示范，只是没有推广到其余模块。认证架构本身的实现质量很高，扣分集中在「最后一公里的输出过滤」。
+      </div>
+    </div>
+
+    <!-- 7 排查难易 -->
+    <div class="card dim">
+      <div class="dim-head">
+        <h3>⑦ 未来排查难易程度评估</h3><span class="dim-badge mid">6.5</span>
+      </div>
+      <div class="dim-grid">
+        <div class="dim-col plus-list">
+          <h4 class="plus">✓ 做得好的</h4>
+          <ul>
+            <li>日志基建完整：RotatingFileHandler（10MB×5 滚动）+ 控制台双通道；HTTP 访问日志记录 IP/方法/路径/状态码；异常分级合理（4xx warning、5xx 全堆栈 <code>logger.exception</code>）</li>
+            <li><code>更新日志.md</code> 按日持续维护 3 个月+，记录的是「为什么这么改」（token 轮换的取舍、双标签页 401 的代价），对未来回溯设计决策价值极高</li>
+            <li>Alembic 13 个迁移全部业务语义命名（如「token表存哈希并新增jti列」），schema 演进可回溯</li>
+          </ul>
+        </div>
+        <div class="dim-col minus-list">
+          <h4 class="minus">✗ 不足</h4>
+          <ul>
+            <li><b>时间基准混乱</b>：同为写库时间，<code>model_base.py</code> 用 <code>datetime.now()</code>（本地 naive）、<code>crud/posts.py:129</code> 与通知已读用 <code>datetime.now(timezone.utc)</code>、token 过期用 <code>datetime.fromtimestamp()</code>（本地）——服务器换时区后，排序、过期判断、日志比对都会出「偏移 8 小时」级疑难杂症</li>
+            <li>访问日志无请求 ID、无耗时——「接口慢/串了哪个请求」只能人肉对时间戳</li>
+            <li>无健康检查接口、无结构化日志、无错误上报；多 worker 下 WS 推送静默失效的场景排查成本极高；日志级别硬编码 INFO</li>
+          </ul>
+        </div>
+      </div>
+      <div class="dim-evidence"><b>证据：</b>grep 全仓库核实三种时间写法并存。更新日志与代码内 <code>## comment</code> 块的密度在同类项目中属上游——「决策可回溯」这半壁江山已建立，缺的是「请求可追踪」的另外半壁。</div>
+    </div>
+
+    <!-- 8 含金量 -->
+    <div class="card dim">
+      <div class="dim-head">
+        <h3>⑧ 项目含金量</h3><span class="dim-badge mid">6.5</span>
+      </div>
+      <div class="dim-grid">
+        <div class="dim-col plus-list">
+          <h4 class="plus">✓ 做得好的</h4>
+          <ul>
+            <li><b>真实生产部署闭环</b>：域名 zcfe.online 在线运行，腾讯云 + Nginx + HTTPS + systemd——绝大多数同类项目止步于本地跑通，「敢上线并维护着」本身就是稀缺信号</li>
+            <li><b>外部集成是真实打通而非 Mock</b>：通义千问 AI 审核（真实 API + 失败降级人工）、MySQL、Redis、WebSocket 全是真实链路，AI 自动审核举报 + 违规帖自动处置是功能差异化亮点</li>
+            <li>功能广度大且<b>持续演进 3 个多月</b>：论坛（板块/楼中楼/点赞/收藏/通知）+ 二手交易 + 实时私信 + 等级经验体系，更新日志从 5 月写到 9 月，不是一次性作业</li>
+            <li>认证组合（轮换 + 哈希落存 + 黑名单 + 防时序）是面试可讲深入的差异化素材，远超「jwt.encode 一把梭」的普遍水平</li>
+          </ul>
+        </div>
+        <div class="dim-col minus-list">
+          <h4 class="minus">✗ 不足</h4>
+          <ul>
+            <li><b>业务域高频撞题</b>：校园论坛是全栈教程与 AI 生成项目的第一大题材，技术栈全主流（FastAPI + Vue3），选题本身无稀缺标签</li>
+            <li><b>零自动化测试拖累「完成度」叙事</b>：作品集场景下无法自证质量；「所有接口完成测试」实为人工点测，说服力有限</li>
+            <li>两个已验证高危漏洞（哈希泄漏/自助提权）说明「最后 10% 的打磨」未完成；README 命令与实际文件名不符等文档瑕疵进一步减分</li>
+            <li>前端为标准 Vue3 SPA，无亮眼技术标签（无可视化、无性能专项、无算法类内容）</li>
+          </ul>
+        </div>
+      </div>
+      <div class="dim-evidence"><b>证据：</b>含金量评的是「相对同类作品的位置」。上线闭环、真实 AI 集成与认证深度把它抬到同类平均线之上；选题高频、无测试、安全收尾未完成又封住了上限——处于「比大多数课程设计强、离能写进简历 top 项还差一步」的区间。</div>
+    </div>
+
+    <!-- 9 深度 -->
+    <div class="card dim">
+      <div class="dim-head">
+        <h3>⑨ 项目深度</h3><span class="dim-badge mid">6.0</span>
+      </div>
+      <div class="dim-grid">
+        <div class="dim-col plus-list">
+          <h4 class="plus">✓ 做得好的（深度体现在已啃下的硬骨头）</h4>
+          <ul>
+            <li><b>真正解决了「JWT 无状态 vs 登出吊销」的矛盾</b>：jti 黑名单 + 单行轮换（覆盖即作废）+ 哈希比对，并论证了高熵 token 用快哈希、低熵密码才用 bcrypt——这是全仓库最深的一块，且踩坑迭代痕迹真实（9/3 哈希落存 → 9/4 轮换补齐）</li>
+            <li>若干正确的并发细节：Redis <code>SET NX EX</code> 原子去重（举报防重）、经验值原子 <code>UPDATE</code> 防读改写丢失、上传流式限额边读边断、压缩丢 <code>to_thread</code> 不阻塞</li>
+            <li>全链路 async（SQLAlchemy async + aiomysql）+ WebSocket 真推送私信，不是轮询模拟</li>
+          </ul>
+        </div>
+        <div class="dim-col minus-list">
+          <h4 class="minus">✗ 不足（深度上限评估）</h4>
+          <ul>
+            <li>问题面整体在「框架追随」层：无全文搜索（LIKE 模糊匹配）、无缓存策略（热帖/通知计数均直查 DB）、无排序算法（置顶 + 时间二段排序）、无压测与高并发设计</li>
+            <li><b>异步理解有一处明显裂缝</b>：同步 AI 调用直接跑在 async 路由里阻塞事件循环 2~5 秒，与「全异步架构」的自我定位矛盾——说明对事件循环的代价模型理解不完整</li>
+            <li>横向扩展能力为零：WS 连接存进程内存、无共享状态；复合索引缺位说明对查询规模化的思考停在单表量级</li>
+          </ul>
+        </div>
+      </div>
+      <div class="dim-evidence"><b>证据：</b>深度分评「问题难度上限」而非实现质量（实现质量见维度⑤）。最难的三个点——token 生命周期、WS 实时通讯、上传管线——完成度都不错，但没有任何一处进入需要自行设计算法或权衡未知方案的领域；事件循环阻塞与索引缺位暴露了深度分布的不均匀。</div>
+    </div>
+  </section>
+
+  <!-- 建议 -->
+  <section>
+    <h2 class="section-title">改进建议（按优先级）</h2>
+    <p class="section-sub">P0 = 公开访问前必须；P1 = 短期应做；P2 = 有余力再做</p>
+    <div class="card" style="padding: 10px 6px;">
+      <table>
+        <thead><tr><th style="width:70px">优先级</th><th style="width:250px">事项</th><th>说明与落点</th></tr></thead>
+        <tbody>
+          <tr><td><span class="p p0">P0</span></td><td>堵住 mass assignment 提权</td><td>从 <code>UserCreateModel / UserUpdateModel</code> 移除 <code>is_superuser / is_active</code>，crud 写入时显式 <code>exclude</code>。约 10 行改动，消除管理员自助授予漏洞。落点：<code>schemas/user.py</code>、<code>crud/user.py</code></td></tr>
+          <tr><td><span class="p p0">P0</span></td><td>响应体过滤掉 password</td><td>为用户/帖子/评论/商品路由补 <code>response_model</code>，或统一改用 <code>_user_brief()</code> 式白名单序列化（message.py 已有正确示范）。密码哈希目前随每个帖子详情下发</td></tr>
+          <tr><td><span class="p p1">P1</span></td><td>修复评论删除权限逻辑</td><td><code>crud/comments.py:113</code> 的 <code>or</code> 改为 <code>and</code>，恢复作者删除自己评论的能力；顺带核对同类权限条件</td></tr>
+          <tr><td><span class="p p1">P1</span></td><td>资料更新密码哈希 + AI 调用移出事件循环</td><td><code>crud_update_user</code> 对 password 先 <code>get_password_hash</code>；<code>review_post_content</code> 用 <code>asyncio.to_thread</code> 包裹或改 async 客户端</td></tr>
+          <tr><td><span class="p p1">P1</span></td><td>统一时间基准为 UTC</td><td>所有 <code>datetime.now()</code> 改 <code>datetime.now(timezone.utc)</code>，token 过期统一 UTC 存储，一次 Alembic 迁移矫正存量数据——趁数据量小尽早做</td></tr>
+          <tr><td><span class="p p1">P1</span></td><td>引入 pytest，权限类逻辑优先</td><td>先为「谁能删/改/看什么」写用例（本次发现的 or/and 写反正是单测最该兜住的类型），再覆盖登录与 token 轮换生命周期</td></tr>
+          <tr><td><span class="p p2">P2</span></td><td>补 5~6 个复合索引</td><td><code>posts(is_top, created_time)</code>、<code>notifications(recipient_uid, is_read, created_time)</code>、<code>messages(conversation_id, created_time)</code>、<code>images(target_type, target_id)</code>、<code>goods(author_uid, status)</code>、<code>comments(parent_id)</code></td></tr>
+          <tr><td><span class="p p2">P2</span></td><td>工程化补课</td><td>ruff 配置并清理死代码；访问日志加请求 ID 与耗时；提供 <code>.env.example</code> 并修正 README 的 requirements 文件名；浏览量改原子 <code>UPDATE ... SET view_count = view_count + 1</code>；WebSocket 鉴权补 refresh 标志与黑名单校验</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <footer>
+    <div class="line"></div>
+    <p>评估方法：逐文件通读后端约 60 个 Python 模块与前端源码；git ls-files 核查 .env / alembic.ini 跟踪状态；项目 venv 内实测 jsonable_encoder 序列化行为复现密码哈希泄漏；全局搜索核实索引与时间基准写法；交叉核对 README、更新日志与代码的一致性。「含金量/深度」两维度额外结合部署状态（zcfe.online）、外部集成真实性（AI/Redis/WS）与更新日志的时间跨度评估。</p>
+    <p>评分标准：9–10 优秀（可直接参考的工程范本）· 7–8.9 良好（有明确改进点）· 5–6.9 及格（存在系统性短板）· &lt;5 需重构</p>
+  </footer>
+</div>
+
+<script>
+(function () {
+  // ---------- 数据 ----------
+  var dims = [
+    { name: "代码规范程度",    score: 7.0 },
+    { name: "配置的新手可读性", score: 6.5 },
+    { name: "数据库索引优化",   score: 4.0 },
+    { name: "模块解耦程度",    score: 7.0 },
+    { name: "代码健壮程度",    score: 5.5 },
+    { name: "用户信息安全性",   score: 5.0 },
+    { name: "未来排查难易程度", score: 6.5 },
+    { name: "项目含金量",     score: 6.5 },
+    { name: "项目深度",       score: 6.0 }
+  ];
+  function level(s) { return s >= 7 ? "good" : (s >= 5.5 ? "mid" : "low"); }
+  function cls(s)   { return s >= 7 ? "bg-good" : (s >= 5.5 ? "bg-mid" : "bg-low"); }
+
+  // ---------- 分数卡 ----------
+  var notes = [
+    "分层与「为什么」级注释出色，命名与死代码拉分",
+    "单一真相源有注释，缺 .env.example 且 README 对不上",
+    "17 表零显式索引，热查询无复合索引支撑",
+    "四层边界清晰，crud 层绑死 FastAPI 是主扣分",
+    "异常与降级体系完整，零测试+权限写反+阻塞调用",
+    "认证架构优秀，哈希泄漏与自助提权两漏洞压分",
+    "日志与更新日志良心，时间基准混乱是暗雷",
+    "真实上线+AI 集成加分，选题高频+零测试封顶",
+    "token 生命周期啃得干净，其余止步框架追随层"
+  ];
+  var grid = document.getElementById("scoreGrid");
+  dims.forEach(function (d, i) {
+    var el = document.createElement("div");
+    el.className = "score-card";
+    el.innerHTML =
+      '<h3>' + (i + 1) + '. ' + d.name + '</h3>' +
+      '<div class="val lvl-' + level(d.score) + '">' + d.score.toFixed(1) + '</div>' +
+      '<div class="bar"><i class="' + cls(d.score) + '" style="width:' + (d.score * 10) + '%"></i></div>' +
+      '<div class="note">' + notes[i] + '</div>';
+    grid.appendChild(el);
+  });
+
+  // ---------- 条形分布 ----------
+  var legend = document.getElementById("legend");
+  dims.forEach(function (d) {
+    var row = document.createElement("div");
+    row.className = "legend-row";
+    row.innerHTML =
+      '<span class="name">' + d.name + '</span>' +
+      '<span class="track"><i class="' + cls(d.score) + '" style="width:' + (d.score * 10) + '%"></i></span>' +
+      '<span class="v lvl-' + level(d.score) + '">' + d.score.toFixed(1) + '</span>';
+    legend.appendChild(row);
+  });
+
+  // ---------- 雷达图 ----------
+  var svg = document.getElementById("radar");
+  var NS = "http://www.w3.org/2000/svg";
+  var cx = 200, cy = 200, R = 128;
+  function pt(i, r) {
+    var ang = -Math.PI / 2 + i * 2 * Math.PI / dims.length;
+    return [cx + r * Math.cos(ang), cy + r * Math.sin(ang)];
+  }
+  function line(x1, y1, x2, y2, stroke, w) {
+    var l = document.createElementNS(NS, "line");
+    l.setAttribute("x1", x1); l.setAttribute("y1", y1);
+    l.setAttribute("x2", x2); l.setAttribute("y2", y2);
+    l.setAttribute("stroke", stroke); l.setAttribute("stroke-width", w || 1);
+    svg.appendChild(l);
+  }
+  // 网格环（每 2 分一档）
+  for (var g = 2; g <= 10; g += 2) {
+    var pts = [];
+    for (var i = 0; i < dims.length; i++) {
+      var p = pt(i, R * g / 10);
+      pts.push(p[0].toFixed(1) + "," + p[1].toFixed(1));
+    }
+    var poly = document.createElementNS(NS, "polygon");
+    poly.setAttribute("points", pts.join(" "));
+    poly.setAttribute("fill", "none");
+    poly.setAttribute("stroke", g === 10 ? "#c9cfdb" : "#e6e9ef");
+    poly.setAttribute("stroke-width", g === 10 ? 1.5 : 1);
+    svg.appendChild(poly);
+  }
+  // 刻度数字（沿垂直轴向上标注一次）
+  for (var t = 2; t <= 10; t += 2) {
+    var tick = document.createElementNS(NS, "text");
+    tick.setAttribute("x", cx + 4);
+    tick.setAttribute("y", cy - R * t / 10 + 3);
+    tick.setAttribute("font-size", "9");
+    tick.setAttribute("fill", "#b6bcc9");
+    tick.textContent = t;
+    svg.appendChild(tick);
+  }
+  // 轴线 + 标签
+  for (var i = 0; i < dims.length; i++) {
+    var p = pt(i, R);
+    line(cx, cy, p[0], p[1], "#e6e9ef", 1);
+    var lp = pt(i, R + 24);
+    var label = document.createElementNS(NS, "text");
+    label.setAttribute("x", lp[0]); label.setAttribute("y", lp[1] + 4);
+    label.setAttribute("text-anchor", "middle");
+    label.setAttribute("font-size", "11.5");
+    label.setAttribute("font-weight", "600");
+    label.setAttribute("fill", "#4a5262");
+    label.textContent = dims[i].name;
+    svg.appendChild(label);
+    var sp = pt(i, R * dims[i].score / 10);
+    var dot = document.createElementNS(NS, "circle");
+    dot.setAttribute("cx", sp[0]); dot.setAttribute("cy", sp[1]);
+    dot.setAttribute("r", "3.5"); dot.setAttribute("fill", "#e8582a");
+    svg.appendChild(dot);
+  }
+  // 数据多边形（带简单动画）
+  var dataPts = [];
+  for (var j = 0; j < dims.length; j++) {
+    dataPts.push(pt(j, R * dims[j].score / 10));
+  }
+  var dataPoly = document.createElementNS(NS, "polygon");
+  dataPoly.setAttribute("points", dataPts.map(function (p) { return p[0].toFixed(1) + "," + p[1].toFixed(1); }).join(" "));
+  dataPoly.setAttribute("fill", "rgba(232,88,42,.18)");
+  dataPoly.setAttribute("stroke", "#e8582a");
+  dataPoly.setAttribute("stroke-width", "2.5");
+  dataPoly.setAttribute("stroke-linejoin", "round");
+  svg.appendChild(dataPoly);
+  var anim = document.createElementNS(NS, "animate");
+  anim.setAttribute("attributeName", "opacity");
+  anim.setAttribute("from", "0"); anim.setAttribute("to", "1");
+  anim.setAttribute("dur", "0.6s"); anim.setAttribute("fill", "freeze");
+  dataPoly.appendChild(anim);
+})();
+</script>
+</body>
+</html>

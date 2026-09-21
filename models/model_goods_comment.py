@@ -13,7 +13,9 @@ class GoodsComment(Base):
         String(36), ForeignKey("goods.gid", ondelete="CASCADE"), nullable=False, comment="商品id"
     )
     author_uid: Mapped[str] = mapped_column(
-        String(36), ForeignKey("user.uid", onupdate="CASCADE"), nullable=False, comment="作者id"
+        # ## 为什么加 ondelete="CASCADE"（2026-09-21）
+        # 同 comments.author_uid：不加的话，评论过商品的用户删不掉（DELETE 会 500）。
+        String(36), ForeignKey("user.uid", onupdate="CASCADE", ondelete="CASCADE"), nullable=False, comment="作者id"
     )
     parent_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("goods_comment.id", ondelete="CASCADE"), nullable=True, default=None, comment="父评论id（支持楼中楼）"

@@ -23,6 +23,8 @@ class UserService:
         """
         orm_user = User(**user.model_dump())
         orm_user.password = security.get_password_hash(user.password)
+        orm_user.is_superuser = False# 强制默认为非管理员
+        orm_user.is_active = True
         db.add(orm_user)
         await db.commit()
         await db.refresh(orm_user)

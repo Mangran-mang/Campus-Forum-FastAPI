@@ -1,8 +1,9 @@
-from datetime import datetime, timezone
+from datetime import datetime
 
 from fastapi import HTTPException
 from sqlalchemy import select, or_, func
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 from starlette import status
 
 from models.model_conversation import Conversation
@@ -65,7 +66,7 @@ class MessageService:
             conv: Conversation,
             current_uid: str
     ) -> None:
-        """把对方用户对象挂到 conv._other_user（用于序列化）"""
+        """给会话挂载对方用户的uid和用户对象"""
         other_uid = conv.user_b_uid if conv.user_a_uid == current_uid else conv.user_a_uid
         conv._other_uid = other_uid
         result = await db.execute(select(User).where(User.uid == other_uid))
@@ -82,21 +83,22 @@ class MessageService:
         获取当前用户的所有会话（按最后消息时间倒序），
         返回 (总数, 会话列表)，每个会话附带对方用户信息与最后一条消息。
         """
+        # 找到含当前用户的会话,并按更新时间排序
         stmt = select(Conversation).where(
-            or_(
+            or_(# 这个or_是什么意思
                 Conversation.user_a_uid == current_uid,
                 Conversation.user_b_uid == current_uid
             )
         ).order_by(Conversation.updated_time.desc())
-
+        # 计算总数
         count_stmt = select(func.count()).select_from(stmt.subquery())
         result = await db.execute(count_stmt)
         total = result.scalar_one_or_none()
 
         offset = (page - 1) * page_size
-        stmt = stmt.offset(offset).limit(page_size)
+        stmt = stmt.offset(offset).limit(page_size)# 分页查询用户会话
         result = await db.execute(stmt)
-        conversations = list(result.scalars().all())
+        conversations = list(result.scalars().all())# 拿到对应页的会话对象,并用列表来存
 
         # 加载对方用户信息与最后一条消息（避免 N+1）
         for conv in conversations:
@@ -107,29 +109,26 @@ class MessageService:
 
     async def _load_last_messages(self, db: AsyncSession, conversations: list[Conversation]) -> None:
         """批量加载每个会话的最后一条消息，挂到 conv._last_message"""
-        conv_ids = [c.id for c in conversations]
+        conv_ids = [c.id for c in conversations]# 所有的会话id
         if not conv_ids:
             return
         # 用子查询取每个会话的最大消息 id
+        # 1.根据会话ID分组,查找消息的会话id,最大消息id
         subq = (
-            select(Message.conversation_id, func.max(Message.id).label("max_id"))
+            select(Message.conversation_id, func.max(Message.id).label("max_id"))# 相当于sql中的AS
             .where(Message.conversation_id.in_(conv_ids))
             .group_by(Message.conversation_id)
             .subquery()
         )
+        # 2.找到每个会话的最大消息id的所有列
         stmt = (
             select(Message)
+            .options(selectinload(Message.sender))
             .join(subq, Message.id == subq.c.max_id)
         )
-        result = await db.execute(stmt)
+        result = await db.execute(stmt)# 拿到的会话id,分好的最大消息id,join的message表
         last_map = {m.conversation_id: m for m in result.scalars().all()}
-        # 批量加载发送者信息
-        sender_uids = {m.sender_uid for m in last_map.values()}
-        if sender_uids:
-            result = await db.execute(select(User).where(User.uid.in_(sender_uids)))
-            senders = {u.uid: u for u in result.scalars().all()}
-            for m in last_map.values():
-                m._sender = senders.get(m.sender_uid)
+        # 批量加载发送者信息,拿到uid
         for conv in conversations:
             conv._last_message = last_map.get(conv.id)
 
@@ -162,7 +161,7 @@ class MessageService:
         """获取会话历史消息（时间倒序分页），仅会话参与者可读"""
         conv = await self.crud_get_conversation(db, conv_id, current_uid)
 
-        stmt = select(Message).where(Message.conversation_id == conv.id)
+        stmt = select(Message).where(Message.conversation_id == conv.id).options(selectinload(Message.sender))
         count_stmt = select(func.count()).select_from(stmt.subquery())
         result = await db.execute(count_stmt)
         total = result.scalar_one_or_none()
@@ -170,17 +169,17 @@ class MessageService:
         offset = (page - 1) * page_size
         result = await db.execute(
             stmt.order_by(Message.created_time.desc()).offset(offset).limit(page_size)
-        )
+        )# 拿到按创建时间排序后的消息对象
         messages = list(result.scalars().all())
         messages.reverse()  # 倒序取回后再转正序，方便前端直接渲染
 
         # 批量加载发送者信息
-        sender_uids = {m.sender_uid for m in messages}
-        if sender_uids:
-            result = await db.execute(select(User).where(User.uid.in_(sender_uids)))
-            senders = {u.uid: u for u in result.scalars().all()}
-            for m in messages:
-                m._sender = senders.get(m.sender_uid)
+        # sender_uids = {m.sender_uid for m in messages}
+        # if sender_uids:
+        #     result = await db.execute(select(User).where(User.uid.in_(sender_uids)))
+        #     senders = {u.uid: u for u in result.scalars().all()}
+        #     for m in messages:
+        #         m.sender = senders.get(m.sender_uid)
 
         return total, messages
 
@@ -200,13 +199,9 @@ class MessageService:
             content=content
         )
         db.add(orm_msg)
-        conv.updated_time = datetime.now(timezone.utc)
+        conv.updated_time = datetime.now()
         await db.commit()
-        await db.refresh(orm_msg)
-
-        # 附带发送者信息
-        result = await db.execute(select(User).where(User.uid == current_uid))
-        orm_msg._sender = result.scalar_one_or_none()
+        await db.refresh(orm_msg,["sender"])
         return orm_msg
 
     # ============ 用户搜索 ============
