@@ -3,6 +3,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from starlette import status
+from sqlalchemy.sql.functions import func
 
 from models.model_goods import Goods
 from models.model_goods_classify import GoodsClassify
@@ -31,14 +32,14 @@ class GoodsService:
 
     async def add_goods(
             self, db: AsyncSession, goods: GoodsCreatePyModel, author_uid: str
-            ):
+            ):# 遗留问题8,用len查数量问题
         # 限制每个用户的在售商品数量
-        active_count_stmt = select(Goods).where(
+        active_count_stmt = select(func.count()).where(
             Goods.author_uid == author_uid,
             Goods.status == "在售",
         )
         active_result = await db.execute(active_count_stmt)
-        active_count = len(active_result.scalars().all())
+        active_count = active_result.scalar_one()
         if active_count >= MAX_ACTIVE_GOODS:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,

@@ -1,11 +1,12 @@
+from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel, EmailStr, ConfigDict
+from pydantic import BaseModel, EmailStr, ConfigDict, Field
 
 
 class UserCreateModel(BaseModel):
     email:EmailStr
-    password:str
+    password:str = Field(...,min_length=8)
     username: Optional[str] = None
     nickname: Optional[str] = None
     # avatar_url: Optional[str] = None
@@ -15,13 +16,36 @@ class UserCreateModel(BaseModel):
 
 class UserUpdateModel(BaseModel):
     email: EmailStr
-    password: str = None
+    password: str = Field(default=None, min_length=8)
     username: str = None
     nickname: str = None
     # avatar_url: str = None
     gender: str = None
     # is_active: Optional[bool] = True
     # is_superuser: Optional[bool] = False
+
+
+class ChangePasswordModel(BaseModel):
+    """修改密码的输入模型（2026-09-23 新增）
+
+    ## comment
+    ### 为什么单独建模型，而不是复用 UserUpdateModel
+    UserUpdateModel 是"改资料"的通用模型，它**不要求提供原密码** ——
+    昵称、性别这类字段本来就不敏感。
+    但改密码是敏感操作：只凭一个有效 token（token 被盗、或 XSS 拿到 localStorage）
+    就能改掉密码，等于账号被永久锁死。所以必须单独开一条路，强制校验原密码。
+    判据和 UserOutModel / UserBriefOut 那次一致：**不同契约才拆模型**。
+
+    ### 为什么 old_password 不写 min_length
+    老密码可能是历史规则下设的 —— 注册接口在 2026-09-23 之前**没有任何长度约束**，
+    存量用户的密码可能是 6 位、1 位甚至空串。
+    若给 old_password 也加 min_length=8，这批人**永远改不了密码**：
+    输入框里填的是他们的真实旧密码，却因为不符合新规则被 422 挡在门外。
+    长度规则是给**新密码**立的 —— 约束入口，不追溯存量。
+    旧密码填错了自然会在 verify_password 那一步失败（401）。
+    """
+    old_password: str
+    new_password: str = Field(..., min_length=8)
 
 class UserLoginModel(BaseModel):
     email: EmailStr
@@ -38,6 +62,15 @@ class UserOutModel(BaseModel):
     nickname:str
     level:int
     experience:int
+    # ## 为什么补上 created_time（2026-09-23）
+    # 前端 ProfileView 的"注册时间"一直显示空白，根因就在这：
+    # **response_model 只会输出模型【声明过】的字段**，ORM 对象上明明有 created_time，
+    # 但这里没声明，就被静默滤掉了（不报错、不警告），前端拿到的是 undefined，
+    # formatTime 里 `if (!t) return ''` 于是返回空串。
+    # 这是"白名单模型"的固有代价：字段必须显式登记，漏了表现为"功能静默失效"而不会报错。
+    # 注册时间给自己看是合理的（UserOutModel 本就是"自己看自己"的契约），
+    # 但**不要**往 UserBriefOut 里加——那是给外人看的，注册时间属于可被用来做用户画像的信息。
+    created_time: datetime
 
 
 # ========== 对外的用户摘要（所有"别人看我"的场景共用）==========

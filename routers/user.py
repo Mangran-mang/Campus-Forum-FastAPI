@@ -12,7 +12,7 @@ from crud.token import TokenService
 from schemas.common import Envelope
 from schemas.user import (
     UserCreateModel, UserUpdateModel, UserLoginModel, UserOutModel,
-    LoginOut, TokenPairOut,
+    LoginOut, TokenPairOut, ChangePasswordModel,
 )
 from tools import security
 from tools.exceptions import success_response, UserException
@@ -121,6 +121,62 @@ async def update_user(
         return success_response(data=new_user_out, message="更新成功")
     else:
         raise UserException()  # 原先是 return {"code":404,...}，HTTP 却是 200
+
+
+@router.post("/change_password", response_model=Envelope[None])
+async def change_password(
+        pwd_data: ChangePasswordModel,
+        db: AsyncSession = Depends(get_database),
+        user_details=Depends(access_token_bearer), ):
+    """
+    修改密码（需校验原密码）
+
+    ## comment
+    ### 为什么单独开接口，而不是走 /update
+    /update 不校验原密码 —— 任何持有有效 token 的人（token 被盗，或 XSS 读到
+    localStorage）都能直接改掉密码，把真正的用户锁在门外。
+    改密码需要"证明你是本人"，所以单独开一条路
+    （模型侧的说明见 schemas/user.py 的 ChangePasswordModel）。
+
+    ### 改完密码后顺手作废该用户的会话
+    否则被盗号者手里的 token 还能继续用（access 1 小时、refresh 2 天），
+    用户改了密码却把攻击者留在门内 —— 等于白改。这里做两件事：
+      - 拉黑**本次请求这把** access 的 jti → 当前会话立刻失效，不必等它自然过期
+      - 删掉 token 表里的行 + 拉黑它记着的 refresh jti → 刷新路径彻底断掉
+    ⚠️ 有一个治不了的缺口：**access token 是无状态的**，服务端只在签发那一刻知道它长什么样，
+    之后不留任何记录。所以除了手里正拿着的这一把，**别的设备上那些 access 拿不到 jti，
+    拉黑不了**，只能等它们自己过期（最多 1 小时）。这是自包含令牌换取"不用查库"的固有代价，
+    不是本接口的疏漏——真要立刻踢掉所有设备的 access，得引入"按用户维度的会话版本号"
+    之类的机制（每次改密就 +1，校验时比对），那是另一层设计。
+    （refresh 那部分做法与 /logout 一致：库里 refresh 已是哈希、解不出 jti，所以 jti 必须单独存一列。）
+    """
+    current_uid = user_details["user"]["user_uid"]
+    await user_service.crud_change_password(
+        db, current_uid, pwd_data.old_password, pwd_data.new_password, )
+
+    # ========== 作废该用户的会话 ==========
+    now_ts = int(datetime.now().timestamp())
+
+    # ① 本次请求这一把 access：jti 就在依赖返回的字典里，直接拉黑。
+    #    这样改完密码的这一刻，前端手上那份 access 就已经是废的了。
+    await add_jti_to_blocklist(
+        user_details["jti"], expiry=max(user_details["exp"] - now_ts, 1), )
+
+    # ② 该用户的 refresh：删库里的行 + 拉黑它记着的 jti（与 /logout 同款）。
+    #    删行 → 下次刷新报"刷新令牌不存在"；拉黑 → 即使 refresh 已被截获也会被拒。
+    orm_token = await token_service.crud_get_token_by_user_uid(db, current_uid)
+    if orm_token:
+        if orm_token.jti:
+            # expire_at 是 naive datetime，.timestamp() 按本地时区解释，
+            # 与原存的 UTC 时间戳基准一致，用它算剩余存活秒数
+            expire_ts = int(orm_token.expire_at.timestamp())
+            await add_jti_to_blocklist(
+                orm_token.jti, expiry=max(expire_ts - now_ts, 1), )
+        await db.delete(orm_token)
+        await db.commit()
+    # ======================================
+
+    return success_response(message="密码修改成功，请重新登录")
 
 
 @router.delete("/delete/{email}", response_model=Envelope[None])

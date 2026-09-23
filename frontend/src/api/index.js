@@ -103,6 +103,8 @@ export const userApi = {
   },
   getCurrentUser: () => request('/user/current_user'),
   updateUser: (data) => request('/user/update', { method: 'POST', body: JSON.stringify(data) }),
+  // 改密码走独立接口（后端会校验原密码，并在成功后作废该用户所有会话）
+  changePassword: (data) => request('/user/change_password', { method: 'POST', body: JSON.stringify(data) }),
   deleteUser: (email) => request(`/user/delete/${email}`, { method: 'DELETE' }),
   logout: () => request('/user/logout', { method: 'POST' }),
 }

@@ -1,3 +1,4 @@
+from fastapi import HTTPException
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -82,7 +83,7 @@ class UserService:
 
 
     async def crud_update_user(
-            self, db: AsyncSession, email: str, user: UserUpdateModel, ):
+            self, db: AsyncSession, email: str, user: UserUpdateModel, ):# 遗留问题9,密码修改后无法登录的问题
         """
         更新目标用户的数据
         且只更新传入的字段，忽略空字段
@@ -94,11 +95,47 @@ class UserService:
             update_data = user.model_dump(exclude_unset=True)  # 获取需要更新的数据实现自适应更新
             for key, value in update_data.items():
                 setattr(orm_user, key, value)
+            if update_data.get("password"):
+                orm_user.password = security.get_password_hash(user.password)
             await db.commit()
             await db.refresh(orm_user)
             return orm_user
         else:
             return None
+
+    async def crud_change_password(
+            self, db: AsyncSession, uid: str, old_password: str, new_password: str
+    ) -> bool:
+        """
+        修改密码：先校验原密码，通过后把新密码哈希入库
+
+        ## 与 crud_update_user 的分工
+        crud_update_user 管"改资料"（昵称/性别……），密码只是它顺带能改的字段之一；
+        本方法管"专门改密码"，比它多一道**原密码校验**的门。
+        两者调用的是同一个 security.get_password_hash —— 哈希规则只有一处定义，
+        这是修掉"注册加密、更新不加密"那个 bug 时确立的底线：
+        同一个字段的落库变换绝不能有两份实现。
+
+        ## 为什么原密码错了返回 401 而不是 403
+        401 = 身份没通过验证；403 = 身份通过了但权限不够。原密码不对属于前者。
+        另外这里**不需要**像登录那样做防枚举（统一文案 + 对齐时序）：
+        能走到这个接口的必定已经持有有效 token，攻击者不靠报错来猜什么。
+
+        ## 不提交会话作废
+        本方法只负责改库里的密码。把该用户已签发的 token 一并作废
+        （删 token 行 + 拉黑 refresh 的 jti）放在路由层做 ——
+        那是"会话"这一侧的事，和密码这一侧职责不同。
+        """
+        orm_user = await self.crud_get_user_by_uid(db, uid)
+        if not orm_user:
+            raise UserException()
+
+        if not security.verify_password(old_password, orm_user.password):
+            raise HTTPException(status_code=401, detail="原密码不正确")
+
+        orm_user.password = security.get_password_hash(new_password)
+        await db.commit()
+        return True
 
     async def crud_get_user_by_uid(self, db: AsyncSession, uid: str):
         """

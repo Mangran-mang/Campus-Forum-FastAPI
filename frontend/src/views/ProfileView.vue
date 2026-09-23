@@ -84,6 +84,43 @@
       </template>
     </div>
 
+    <!-- 修改密码（独立卡片：改资料只动昵称/性别，改密码是敏感操作，单独一条路） -->
+    <div class="card" style="margin-top:24px">
+      <div class="flex-between" style="margin-bottom:12px">
+        <h3 style="font-size:16px">修改密码</h3>
+        <button v-if="!pwdEditing" class="btn-outline btn-sm" @click="togglePwd">修改</button>
+      </div>
+
+      <p v-if="!pwdEditing" style="font-size:13px;color:var(--text-secondary);margin:0">
+        需要先输入当前密码。修改成功后当前登录状态会失效，请用新密码重新登录。
+      </p>
+
+      <form v-else @submit.prevent="handleChangePassword">
+        <div class="field">
+          <label>当前密码</label>
+          <input v-model="pwdForm.old_password" type="password" autocomplete="current-password"
+                 placeholder="请输入当前使用的密码" />
+        </div>
+        <div class="field">
+          <label>新密码</label>
+          <input v-model="pwdForm.new_password" type="password" autocomplete="new-password"
+                 placeholder="至少 8 位" />
+        </div>
+        <div class="field">
+          <label>确认新密码</label>
+          <input v-model="pwdForm.confirm_password" type="password" autocomplete="new-password"
+                 placeholder="再输入一次新密码" />
+        </div>
+        <p v-if="pwdError" class="error-msg">{{ pwdError }}</p>
+        <div style="display:flex;gap:8px;margin-top:4px">
+          <button type="submit" class="btn-primary" :disabled="pwdSaving">
+            {{ pwdSaving ? '提交中...' : '确认修改' }}
+          </button>
+          <button type="button" class="btn-outline" @click="togglePwd">取消</button>
+        </div>
+      </form>
+    </div>
+
     <!-- 我的帖子 -->
     <div style="margin-top:24px">
       <h3 style="font-size:16px;margin-bottom:12px">我的帖子</h3>
@@ -120,6 +157,16 @@ const editForm = reactive({
   username: '',
   gender: '未知',
   avatar_url: '',
+})
+
+// ========== 修改密码 ==========
+const pwdEditing = ref(false)
+const pwdSaving = ref(false)
+const pwdError = ref('')
+const pwdForm = reactive({
+  old_password: '',
+  new_password: '',
+  confirm_password: '',
 })
 
 function formatTime(t) {
@@ -199,6 +246,53 @@ async function handleDeleteAccount() {
     clearAuth()
     router.push('/login')
   } catch {}
+}
+
+// ========== 修改密码 ==========
+function togglePwd() {
+  pwdEditing.value = !pwdEditing.value
+  pwdError.value = ''
+  // 收起时清空，避免把上次输的密码留在页面上
+  pwdForm.old_password = ''
+  pwdForm.new_password = ''
+  pwdForm.confirm_password = ''
+}
+
+async function handleChangePassword() {
+  pwdError.value = ''
+  // ## 前端这道校验只是"少发一次注定失败的请求"，真正的约束在后端
+  // ChangePasswordModel 里 new_password 有 min_length=8，old_password 故意没有
+  // （存量用户的旧密码可能是老规则下设的短密码，卡了他们就永远改不了密码）
+  if (!pwdForm.old_password) { pwdError.value = '请输入当前密码'; return }
+  if (pwdForm.new_password.length < 8) { pwdError.value = '新密码至少 8 位'; return }
+  if (pwdForm.new_password !== pwdForm.confirm_password) { pwdError.value = '两次输入的新密码不一致'; return }
+  if (pwdForm.new_password === pwdForm.old_password) { pwdError.value = '新密码不能与当前密码相同'; return }
+
+  pwdSaving.value = true
+  try {
+    const res = await userApi.changePassword({
+      old_password: pwdForm.old_password,
+      new_password: pwdForm.new_password,
+    })
+    if (res.code === 200) {
+      // 后端已经作废本用户的全部会话（删 token 行 + 拉黑 refresh 的 jti），
+      // 本地这份 token 随即失效——不清掉的话后续请求会到处 401/403
+      alert('密码修改成功，请使用新密码重新登录')
+      clearAuth()
+      router.push('/login')
+    } else {
+      // 422 时后端把字段级明细放进 data（[{field, message}, ...]），优先展示第一条；
+      // 401（原密码不正确）走 message
+      const hasFieldError = Array.isArray(res.data) && res.data.length > 0
+      pwdError.value = hasFieldError
+        ? `${res.data[0].field}: ${res.data[0].message}`
+        : (res.message || '修改失败')
+    }
+  } catch {
+    pwdError.value = '网络错误，请稍后重试'
+  } finally {
+    pwdSaving.value = false
+  }
 }
 
 onMounted(() => {
