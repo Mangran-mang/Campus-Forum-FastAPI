@@ -43,6 +43,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { goodsApi, classifyApi } from '../api/index.js'
+import { pickErrorMessage } from '../utils/errorMessage.js'
 
 const route = useRoute()
 const router = useRouter()
@@ -102,7 +103,7 @@ async function handleSubmit() {
     if (res.code === 200 || (res && !res.code)) {
       router.push(`/goods/${gid.value}`)
     } else {
-      error.value = res.detail || res.message || '修改失败'
+      error.value = pickErrorMessage(res, '修改失败，请稍后重试')
     }
   } catch {
     error.value = '网络错误，请稍后重试'

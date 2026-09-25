@@ -14,6 +14,7 @@
   </div>
   <div v-else-if="!post" class="empty-state"><p>帖子不存在</p></div>
   <div v-else>
+    <p v-if="pageError" class="error-msg" style="margin-bottom:8px">{{ pageError }}</p>
     <!-- 帖子详情 -->
     <article class="card">
       <h1 style="font-size:22px;margin-bottom:8px">{{ post.title }}</h1>
@@ -116,6 +117,7 @@
 import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { postApi, commentApi, likeApi, bookmarkApi, userApi, imageApi } from '../api/index.js'
+import { pickErrorMessage } from '../utils/errorMessage.js'
 
 const route = useRoute()
 const router = useRouter()
@@ -157,6 +159,11 @@ const newComment = ref('')
 const replyTo = ref(null)
 const replyContent = ref('')
 
+// 页面级错误提示：本文件原先多处 `catch {}`（点赞、收藏、发评论、删评论…），
+// 失败时页面毫无反应，用户只会觉得"点了没生效"。这里统一收口，
+// 让失败至少有个说法；纯装饰性的加载（如配图）失败仍只记控制台，不打扰用户。
+const pageError = ref('')
+
 // 帖子配图
 const images = ref([])
 
@@ -171,7 +178,10 @@ async function loadImages() {
   try {
     const res = await imageApi.getList('post', postId.value)
     if (res.code === 200) images.value = res.data || []
-  } catch {}
+  } catch (e) {
+    // 配图是锦上添花，失败不该弹提示盖住正文 —— 只记控制台
+    console.warn('帖子配图加载失败', e)
+  }
 }
 
 function formatTime(t) {
@@ -185,10 +195,19 @@ function canDeleteComment(comment) {
 
 async function loadPost() {
   loading.value = true
+  pageError.value = ''
   try {
     const res = await postApi.getDetail(postId.value)
-    if (res.code === 200) post.value = res.data
-  } catch {} finally {
+    if (res.code === 200) {
+      post.value = res.data
+    } else {
+      // 不设提示的话，页面会直接落到"帖子不存在"这个空状态，
+      // 用户分不清是"帖子真被删了"还是"接口挂了"
+      pageError.value = pickErrorMessage(res, '帖子加载失败')
+    }
+  } catch {
+    pageError.value = '帖子加载失败，请检查网络后刷新重试'
+  } finally {
     loading.value = false
   }
 }
@@ -225,8 +244,14 @@ async function toggleLike() {
       likeCount.value += res.data.liked ? 1 : -1
       likeAnimating.value = true
       setTimeout(() => { likeAnimating.value = false }, 400)
+    } else {
+      // 之前失败是完全静默的：按钮没有视觉变化，用户会以为"没点上"而反复点，
+      // 每次都在打后端。必须给个反馈，哪怕是失败。
+      pageError.value = pickErrorMessage(res, '点赞失败，请稍后重试')
     }
-  } catch {}
+  } catch {
+    pageError.value = '点赞失败，请检查网络后重试'
+  }
 }
 
 async function toggleBookmark() {
@@ -236,8 +261,12 @@ async function toggleBookmark() {
       isBookmarked.value = res.data.bookmarked
       bookmarkAnimating.value = true
       setTimeout(() => { bookmarkAnimating.value = false }, 400)
+    } else {
+      pageError.value = pickErrorMessage(res, '收藏失败，请稍后重试')
     }
-  } catch {}
+  } catch {
+    pageError.value = '收藏失败，请检查网络后重试'
+  }
 }
 
 async function handleDelete() {
@@ -247,7 +276,7 @@ async function handleDelete() {
     if (res.code === 200) {
       router.push('/posts')
     } else {
-      alert(res.message || res.detail || '删除失败')
+      alert(pickErrorMessage(res, '删除失败，请稍后重试'))
     }
   } catch {
     alert('删除失败，请稍后重试')
@@ -269,7 +298,7 @@ async function handleReport() {
         alert('AI 审核未发现违规内容，帖子已保留')
       }
     } else {
-      alert(res.message || res.detail || '举报失败')
+      alert(pickErrorMessage(res, '举报失败，请稍后重试'))
     }
   } catch {
     alert('举报失败，请稍后重试')
@@ -289,37 +318,62 @@ async function loadComments(page = 1) {
       // 于是 totalComments 恒为 0 —— 表现为"评论 (0)"且分页条不显示。
       comments.value = res.data?.comments || []
       totalComments.value = res.data?.total || 0
+    } else {
+      pageError.value = pickErrorMessage(res, '评论加载失败')
     }
-  } catch {}
+  } catch {
+    pageError.value = '评论加载失败，请检查网络后重试'
+  }
 }
 
 async function submitComment() {
   if (!newComment.value.trim()) return
+  pageError.value = ''
   try {
     const res = await commentApi.add(postId.value, { content: newComment.value })
     if (res.code === 200) {
       newComment.value = ''
       loadComments(1)
+    } else {
+      // 失败时不清空输入框，把用户刚打的内容留着 —— 否则白打一遍
+      pageError.value = pickErrorMessage(res, '评论发布失败，请稍后重试')
     }
-  } catch {}
+  } catch {
+    pageError.value = '评论发布失败，请检查网络后重试（内容已保留）'
+  }
 }
 
 async function submitReply(parentId) {
   if (!replyContent.value.trim()) return
+  pageError.value = ''
   try {
-    await commentApi.add(postId.value, { content: replyContent.value, parent_id: parentId })
+    const res = await commentApi.add(postId.value, { content: replyContent.value, parent_id: parentId })
+    if (res && res.code !== 200) {
+      pageError.value = pickErrorMessage(res, '回复失败，请稍后重试')
+      return
+    }
     replyContent.value = ''
     replyTo.value = null
     loadComments(commentPage.value)
-  } catch {}
+  } catch {
+    pageError.value = '回复失败，请检查网络后重试（内容已保留）'
+  }
 }
 
 async function deleteComment(commentId) {
   if (!confirm('确定删除此评论？')) return
+  pageError.value = ''
   try {
-    await commentApi.delete(commentId)
+    const res = await commentApi.delete(commentId)
+    // 失败还去刷新列表，会让人误以为"删了但列表没更新"，实际是根本没删掉
+    if (res && res.code !== 200) {
+      pageError.value = pickErrorMessage(res, '删除评论失败')
+      return
+    }
     loadComments(commentPage.value)
-  } catch {}
+  } catch {
+    pageError.value = '删除评论失败，请检查网络后重试'
+  }
 }
 
 // 关键：从后端拉取真实用户信息覆盖 localStorage，防止账号切换后残留

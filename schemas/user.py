@@ -17,8 +17,19 @@ class UserCreateModel(BaseModel):
 class UserUpdateModel(BaseModel):
     email: EmailStr
     password: str = Field(default=None, min_length=8)
-    username: str = None
-    nickname: str = None
+    # ## 为什么这两个都得是 Optional[str]（2026-09-25）
+    # 原写法 `str = None`：注解是 str（不含 None）而默认值是 None，
+    # Pydantic v2 实测行为是"两副面孔"——
+    #   不传该字段 → 走默认值，而**默认值不参与校验** → 通过（正常路径看不出问题）
+    #   显式传 null → 校验 None 是不是 str → **422 `Input should be a valid string`**
+    # 而 ProfileView.vue 的 handleSave 传的是 `editForm.xxx || null`，
+    # 用户清空用户名/昵称再保存就会撞上第二条。
+    # ⚠️ 注意 `gender: str = None` 保持原样是有意为之：前端那个字段来自
+    # select（值恒为 男/女/未知），不会传 null；而 user.gender 列是
+    # Enum('男','女','未知') NOT NULL，放开成 Optional 反而会让 None
+    # 穿过 Pydantic 校验、最后在数据库层炸成 400。要放开得先配 crud 侧的"None 不写回"。
+    username: Optional[str] = None
+    nickname: Optional[str] = None
     # avatar_url: str = None
     gender: str = None
     # is_active: Optional[bool] = True

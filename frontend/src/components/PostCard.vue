@@ -30,6 +30,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { postApi, userApi } from '../api/index.js'
+import { pickErrorMessage } from '../utils/errorMessage.js'
 
 const props = defineProps({
   post: { type: Object, required: true },
@@ -75,7 +76,7 @@ async function handleReport() {
         alert('AI 审核未发现违规内容，帖子已保留')
       }
     } else {
-      alert(res.message || res.detail || '举报失败')
+      alert(pickErrorMessage(res, '举报失败，请稍后重试'))
     }
   } catch {
     alert('举报失败，请稍后重试')

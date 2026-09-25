@@ -61,11 +61,11 @@
         <form @submit.prevent="handleSave">
           <div class="field">
             <label>昵称</label>
-            <input v-model="editForm.nickname" placeholder="给自己取个名字" />
+            <input v-model="editForm.nickname" placeholder="给自己取个名字" maxlength="50" />
           </div>
           <div class="field">
             <label>用户名</label>
-            <input v-model="editForm.username" placeholder="设置用户名" />
+            <input v-model="editForm.username" placeholder="设置用户名" maxlength="50" />
           </div>
           <div class="field">
             <label>性别</label>
@@ -141,6 +141,7 @@ import { useRouter } from 'vue-router'
 import PostCard from '../components/PostCard.vue'
 import { userApi, postApi, clearAuth } from '../api/index.js'
 import { levelLabel, levelName, levelProgress, nextLevelExp } from '../utils/level.js'
+import { pickErrorMessage } from '../utils/errorMessage.js'
 
 const router = useRouter()
 const isLoggedIn = ref(!!localStorage.getItem('access_token'))
@@ -223,10 +224,10 @@ async function handleSave() {
       saveSuccess.value = true
       setTimeout(() => { editing.value = false }, 1000)
     } else {
-      saveError.value = res.detail || res.message || '保存失败'
+      saveError.value = pickErrorMessage(res, '保存失败，请稍后重试')
     }
   } catch {
-    saveError.value = '网络错误'
+    saveError.value = '网络错误，请稍后重试'
   } finally {
     saving.value = false
   }
@@ -281,12 +282,11 @@ async function handleChangePassword() {
       clearAuth()
       router.push('/login')
     } else {
-      // 422 时后端把字段级明细放进 data（[{field, message}, ...]），优先展示第一条；
-      // 401（原密码不正确）走 message
-      const hasFieldError = Array.isArray(res.data) && res.data.length > 0
-      pwdError.value = hasFieldError
-        ? `${res.data[0].field}: ${res.data[0].message}`
-        : (res.message || '修改失败')
+      // 统一走 pickErrorMessage：422 时它会读 data 里的字段明细并翻成中文。
+      // 原来手工拼 `${field}: ${message}` 会把 pydantic 的英文原文直接甩给用户
+      // （"new_password: String should have at least 8 characters"），等于没说。
+      // 401（原密码不正确）这类业务异常本来 message 就是中文，直接透传。
+      pwdError.value = pickErrorMessage(res, '修改失败，请稍后重试')
     }
   } catch {
     pwdError.value = '网络错误，请稍后重试'

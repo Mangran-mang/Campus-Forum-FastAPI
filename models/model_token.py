@@ -18,7 +18,8 @@ class Token(Base):
         String(36),
         ForeignKey("user.uid",onupdate="CASCADE",ondelete="CASCADE"),# 父表主键更新，子表外键跟着更新),
         nullable= False,
-        comment="用户id"
+        comment="用户id",
+        unique=True
     )
     refresh_token: Mapped[str] = mapped_column(String(512),nullable= False,comment="刷新令牌的sha256哈希,单向不可逆,仅供比对")
     jti: Mapped[str] = mapped_column(String(64),nullable= False,comment="刷新令牌的jti,登出时用来拉黑")

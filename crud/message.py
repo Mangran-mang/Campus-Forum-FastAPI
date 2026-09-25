@@ -3,7 +3,7 @@ from datetime import datetime
 from fastapi import HTTPException
 from sqlalchemy import select, or_, func
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import selectinload, joinedload
 from starlette import status
 
 from models.model_conversation import Conversation
@@ -43,21 +43,29 @@ class MessageService:
 
         # 规范化排序后查询已有会话
         user_a, user_b = self._normalize_pair(current_uid, other_uid)
-        stmt = select(Conversation).where(
+        stmt = (select(Conversation)
+        .options(joinedload(Conversation.user_a), joinedload(Conversation.user_b))
+        .where(
             Conversation.user_a_uid == user_a,
             Conversation.user_b_uid == user_b
-        )
+        ))
         result = await db.execute(stmt)
         conv = result.scalar_one_or_none()
+        # 如果存在会话的话，直接返回
         if conv:
             await self._attach_other_user(db, conv, current_uid)
             return conv
+
+        # 如果不存在会话，则创建新会话
+        # 创建新会话
 
         conv = Conversation(user_a_uid=user_a, user_b_uid=user_b)
         db.add(conv)
         await db.commit()
         await db.refresh(conv)
-        await self._attach_other_user(db, conv, current_uid)
+
+        conv._other_uid = other_uid
+        conv._other_user = other_user
         return conv
 
     async def _attach_other_user(
@@ -66,11 +74,12 @@ class MessageService:
             conv: Conversation,
             current_uid: str
     ) -> None:
-        """给会话挂载对方用户的uid和用户对象"""
-        other_uid = conv.user_b_uid if conv.user_a_uid == current_uid else conv.user_a_uid
-        conv._other_uid = other_uid
-        result = await db.execute(select(User).where(User.uid == other_uid))
-        conv._other_user = result.scalar_one_or_none()
+        """先算出对方用户的 uid,给会话挂载对方用户的uid和用户对象"""
+        # 原方法是拿到会话后再去查用户并挂在,现在直接一次性查好并入
+        # 所以这里可以直接读内存来挂载,速度更快
+        is_user_a = conv.user_a_uid == current_uid
+        conv._other_uid = conv.user_b_uid if is_user_a else conv.user_a_uid
+        conv._other_user = conv.user_b if is_user_a else conv.user_a
 
     async def crud_get_user_conversations(
             self,
@@ -84,12 +93,15 @@ class MessageService:
         返回 (总数, 会话列表)，每个会话附带对方用户信息与最后一条消息。
         """
         # 找到含当前用户的会话,并按更新时间排序
-        stmt = select(Conversation).where(
+        stmt = (select(Conversation).where(
             or_(# 这个or_是什么意思
                 Conversation.user_a_uid == current_uid,
                 Conversation.user_b_uid == current_uid
             )
-        ).order_by(Conversation.updated_time.desc())
+        ).options(
+            joinedload(Conversation.user_a),
+                  joinedload(Conversation.user_b),
+                  ).order_by(Conversation.updated_time.desc()))
         # 计算总数
         count_stmt = select(func.count()).select_from(stmt.subquery())
         result = await db.execute(count_stmt)
@@ -101,7 +113,7 @@ class MessageService:
         conversations = list(result.scalars().all())# 拿到对应页的会话对象,并用列表来存
 
         # 加载对方用户信息与最后一条消息（避免 N+1）
-        for conv in conversations:
+        for conv in conversations:# 遗留问题10,具体在_attach_other_user函数
             await self._attach_other_user(db, conv, current_uid)
         await self._load_last_messages(db, conversations)
 

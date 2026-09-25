@@ -27,6 +27,7 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { userApi } from '../api/index.js'
+import { pickErrorMessage } from '../utils/errorMessage.js'
 
 const router = useRouter()
 const email = ref('')
@@ -43,10 +44,12 @@ async function handleLogin() {
       window.dispatchEvent(new Event('auth-change'))
       router.push('/posts')
     } else {
-      error.value = res.detail || res.message || '登录失败'
+      // 登录失败后端返回 401 + "邮箱或密码错误" 这类中文 message；
+      // 若碰到 422（如邮箱格式），pickErrorMessage 会把字段明细翻成中文
+      error.value = pickErrorMessage(res, '登录失败，请检查邮箱和密码')
     }
   } catch (e) {
-    error.value = '网络错误'
+    error.value = '网络错误，请稍后重试'
   } finally {
     loading.value = false
   }

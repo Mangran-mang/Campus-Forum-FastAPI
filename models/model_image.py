@@ -23,7 +23,17 @@ class Image(Base):
     # 验证方法：alembic check（不再报这条即可）。
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True, comment="图片ID")
-    filename: Mapped[str] = mapped_column(String(255), nullable=False, comment="存储文件名")
+    # ## 为什么补 unique=True（2026-09-25）
+    # 数据库里 images.filename 上【本来就有】唯一索引（`SHOW INDEX FROM images` 实测
+    # Non_unique=0），而模型没写 —— 这是"库比模型严"的漂移。
+    # 后果：autogenerate 每次都想去 `drop_index('filename')` 把它删掉，
+    # 那是**功能回归**（filename 是 UUID，唯一性天然成立，这条索引是防重复的保护）。
+    #
+    # 漂移的修法有两种，判据是"这个约束是不是我们**想要**的"：
+    #   想要 → 把模型补成和库一致（这里就是这种）
+    #   不想要 → 写迁移把库改成和模型一致（例如 9/21 删掉的那条 target 唯一约束）
+    # 无脑跟着 autogenerate 走会把两种漂移都往"模型"的方向拉，删掉不该删的东西。
+    filename: Mapped[str] = mapped_column(String(255), unique=True, nullable=False, comment="存储文件名")
     target_type: Mapped[str] = mapped_column(String(10), nullable=False, comment="关联类型(post/goods)")
     target_id: Mapped[str] = mapped_column(String(36), nullable=False, comment="关联目标ID")
     # ## 为什么加 ondelete="CASCADE"（2026-09-21）

@@ -26,6 +26,7 @@
 """
 from typing import Any, Callable, Optional
 import logging
+import re
 from http import HTTPStatus
 
 logger = logging.getLogger(__name__)
@@ -258,6 +259,66 @@ async def request_validation_exception_handler(request: Request, exc: RequestVal
     )
 
 
+# ---------- 唯一约束冲突：按「冲突的是哪个索引」分流文案 ----------
+#
+# ## 为什么必须按索引分流，不能按报错前缀分流（2026-09-25 修）
+# MySQL 的重复键报错对**所有表**是同一个句式：
+#     Duplicate entry 'xxx' for key 'user.email'
+# 原来的实现是：
+#     if "username_UNIQUE" in error_msg or "Duplicate entry" in error_msg:
+#         message = "用户名已存在"
+# 那个 `or` 的后半段把**任何表**的重复键都吞成了"用户名已存在"：
+# 重复注册邮箱、重复点赞、重复收藏、并发建会话、并发登录……
+# 用户一律看到"用户名已存在"，完全不知道自己在哪一步出了问题。
+# （而前半段的 "username_UNIQUE" 这个索引在当前库里根本不存在 ——
+#   `SHOW INDEX FROM user` 只有 PRIMARY(uid) 和 email，
+#   所以这个分支实际上 100% 走的是那句错文案。）
+# token.user_uid 加上唯一约束后，并发登录也会撞进来，暴露面又大了一圈，必须修。
+#
+# ## 键名格式与 MySQL 版本有关（本机实测 8.0.34）
+#   MySQL 8.0：Duplicate entry 'x' for key 'categories.name'   ← 表名.索引名
+#   MySQL 5.7：Duplicate entry 'x' for key 'name'              ← 只有索引名
+# 所以下面既列「表名/约束名」，两种格式都能命中；顺序即优先级，先具体后宽泛。
+_DUPLICATE_KEY_HINTS = (
+    ("user.email", "该邮箱已被注册，请直接登录或换一个邮箱"),
+    ("email", "该邮箱已被注册，请直接登录或换一个邮箱"),
+    ("username", "该用户名已被占用，请换一个"),
+    ("uq_user_post_like", "你已经点过赞了"),
+    ("like", "你已经点过赞了"),
+    ("uq_user_post_bookmark", "你已经收藏过了"),
+    ("bookmark", "你已经收藏过了"),
+    # ⚠️ 顺序有讲究：两个约束名里都含 "conversation"，
+    # `uq_message_conversation`（消息表）必须排在 `conversation`（会话表）**前面**，
+    # 否则消息表的冲突会被"会话已存在"抢先命中 —— 实测踩过一次。
+    ("uq_conversation_pair", "会话已存在，请刷新页面"),
+    ("uq_message_conversation", "消息发送过于频繁，请稍后再试"),
+    ("conversation", "会话已存在，请刷新页面"),
+    ("message", "消息发送过于频繁，请稍后再试"),
+    ("uq_notification_recipient_post", "请勿重复操作"),
+    ("notification", "请勿重复操作"),
+    ("categories", "该板块名称已存在"),
+    ("level_config", "该等级配置已存在"),
+    ("token", "登录状态冲突，请重新登录"),
+    ("image", "图片重复，请重新上传"),
+)
+
+
+def _duplicate_key_message(error_msg: str) -> str:
+    """从 MySQL 重复键报错里解析出冲突的索引，给出对得上的中文提示
+
+    ## comment
+    "Duplicate entry" 只说明"撞了唯一约束"，撞的是哪一个得从 `for key '...'` 里读。
+    解析不出来就退回通用文案 —— 宁可说得笼统，也不要把 SQL 细节抛给前端
+    （表名、索引名属于内部结构，泄露出去是安全隐患）。
+    """
+    matched = re.search(r"for key '([^']+)'", error_msg)
+    key = (matched.group(1) if matched else "").lower()
+    for hint, hint_message in _DUPLICATE_KEY_HINTS:
+        if hint in key:
+            return hint_message
+    return "数据冲突，请检查提交的内容"
+
+
 async def db_exception_handler(request: Request, exc: IntegrityError):
     """数据库完整性约束冲突
 
@@ -267,9 +328,23 @@ async def db_exception_handler(request: Request, exc: IntegrityError):
     """
     logger.exception(exc)
     error_msg = str(exc.orig)  # orig 属性返回原始错误信息
-    if "username_UNIQUE" in error_msg or "Duplicate entry" in error_msg:
-        message = "用户名已存在"
-    elif "FOREIGN KEY" in error_msg:
+
+    # ## 为什么统一转小写再判断
+    # MySQL 同一段报错里大小写是混的，例如外键报错：
+    #   Cannot add or update a child row: a foreign key constraint fails
+    #   (`mangran`.`posts`, CONSTRAINT `xxx` FOREIGN KEY (`author_uid`) REFERENCES ...)
+    # 前半句是**小写**的 "foreign key"、后半句才是大写的 "FOREIGN KEY"。
+    # 原来写死 `"FOREIGN KEY" in error_msg`（大写）能命中只是因为后半句恰好存在，
+    # 一旦报错被截断/换版本就漏判 → 落到通用兜底文案。统一 lower() 更稳。
+    error_lower = error_msg.lower()
+
+    if "duplicate entry" in error_lower:
+        # 唯一约束冲突：文案取决于撞的是哪个索引，不能一概而论
+        message = _duplicate_key_message(error_msg)
+    elif "foreign key" in error_lower:
+        # 本项目所有外键最终都指向 user.uid（posts/comments 的 author_uid、
+        # conversations 的双方、token 的 user_uid），所以说"用户不存在"是准确的。
+        # 将来若给别的表加外键，再按 CONSTRAINT 名分流。
         message = "用户不存在"
     else:
         message = "数据冲突，请检查提交的内容"

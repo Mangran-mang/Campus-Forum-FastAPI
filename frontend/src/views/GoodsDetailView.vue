@@ -16,6 +16,7 @@
   </div>
   <div v-else-if="!goods" class="empty-state"><p>商品不存在或已下架</p></div>
   <div v-else>
+    <p v-if="pageError" class="error-msg" style="margin-bottom:8px">{{ pageError }}</p>
     <article class="card goods-detail">
       <!-- 商品图片 -->
       <div v-if="images.length > 0" class="goods-images">
@@ -154,6 +155,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { goodsApi, goodsCommentApi, imageApi } from '../api/index.js'
+import { pickErrorMessage } from '../utils/errorMessage.js'
 
 const route = useRoute()
 const router = useRouter()
@@ -181,6 +183,12 @@ const newComment = ref('')
 const replyTo = ref(null)
 const replyContent = ref('')
 
+// 页面级错误提示：本文件原先从加载商品到发评论、改状态、删评论，一共 8 处 `catch {}`，
+// 任何一步失败页面都**毫无反应**——用户只会觉得"点了没生效"然后反复点。
+// 静默失败比报错更难排查：用户甚至没法告诉你"控制台报了个 500"。
+// 所以这里统一收口，失败时至少说清是哪一步出的问题。
+const pageError = ref('')
+
 function canDeleteComment(comment) {
   return currentUser.value?.uid === comment.author_uid || currentUser.value?.is_superuser
 }
@@ -203,6 +211,7 @@ function imgPath(img) {
 
 async function loadGoods() {
   loading.value = true
+  pageError.value = ''
   try {
     const res = await goodsApi.getDetail(gid.value)
     if (res.code === 200) {
@@ -210,31 +219,55 @@ async function loadGoods() {
     } else if (res && !res.code) {
       // 直接返回了对象
       goods.value = res
+    } else {
+      pageError.value = pickErrorMessage(res, '商品加载失败')
     }
-  } catch {} finally {
+  } catch {
+    pageError.value = '商品加载失败，请检查网络后刷新重试'
+  } finally {
     loading.value = false
   }
 }
 
 async function handleDelete() {
   if (!confirm('确定删除此商品？')) return
+  pageError.value = ''
   try {
-    await goodsApi.delete(gid.value)
+    const res = await goodsApi.delete(gid.value)
+    // ## 为什么这里要检查 res.code
+    // 原来是拿到响应就无脑 router.push，删失败（比如 403 无权、404 已不存在）
+    // 也会跳走，用户以为删掉了，回头看列表东西还在——最迷惑的一类 bug。
+    // 得先确认服务端真的删了再离开这个页面。
+    if (res && res.code !== 200) {
+      pageError.value = pickErrorMessage(res, '删除失败，请稍后重试')
+      return
+    }
     router.push('/goods')
-  } catch {}
+  } catch {
+    pageError.value = '删除失败，请检查网络后重试'
+  }
 }
 
 async function toggleStatus() {
   const newStatus = goods.value.status === '在售' ? '已售出' : '在售'
+  pageError.value = ''
   try {
-    await goodsApi.update(gid.value, {
+    const res = await goodsApi.update(gid.value, {
       name: goods.value.name,
       classify: goods.value.classify_rel?.name || goods.value.classify,
       status: newStatus,
       price: Number(goods.value.price),
     })
+    // 同样要确认服务端改成功了再动本地状态，否则界面显示"已售出"、
+    // 数据库里还是"在售"，刷新一下就穿帮
+    if (res && res.code !== 200) {
+      pageError.value = pickErrorMessage(res, `改为「${newStatus}」失败`)
+      return
+    }
     goods.value.status = newStatus
-  } catch {}
+  } catch {
+    pageError.value = '修改商品状态失败，请检查网络后重试'
+  }
 }
 
 // 评论相关
@@ -246,37 +279,62 @@ async function loadComments(page = 1) {
       // 字段名从 list 统一成 comments（与帖子评论接口保持一致）
       comments.value = res.data?.comments || []
       totalComments.value = res.data?.total || 0
+    } else {
+      pageError.value = pickErrorMessage(res, '评论加载失败')
     }
-  } catch {}
+  } catch {
+    pageError.value = '评论加载失败，请检查网络后重试'
+  }
 }
 
 async function submitComment() {
   if (!newComment.value.trim()) return
+  pageError.value = ''
   try {
     const res = await goodsCommentApi.add(gid.value, { content: newComment.value })
     if (res.code === 200) {
       newComment.value = ''
       loadComments(1)
+    } else {
+      // 不清空输入框：失败时把用户刚打的内容留着，否则白打一遍
+      pageError.value = pickErrorMessage(res, '评论发布失败，请稍后重试')
     }
-  } catch {}
+  } catch {
+    pageError.value = '评论发布失败，请检查网络后重试（内容已保留）'
+  }
 }
 
 async function submitReply(parentId) {
   if (!replyContent.value.trim()) return
+  pageError.value = ''
   try {
-    await goodsCommentApi.add(gid.value, { content: replyContent.value, parent_id: parentId })
+    const res = await goodsCommentApi.add(gid.value, { content: replyContent.value, parent_id: parentId })
+    if (res && res.code !== 200) {
+      pageError.value = pickErrorMessage(res, '回复失败，请稍后重试')
+      return
+    }
     replyContent.value = ''
     replyTo.value = null
     loadComments(commentPage.value)
-  } catch {}
+  } catch {
+    pageError.value = '回复失败，请检查网络后重试（内容已保留）'
+  }
 }
 
 async function deleteComment(commentId) {
   if (!confirm('确定删除此评论？')) return
+  pageError.value = ''
   try {
-    await goodsCommentApi.delete(commentId)
+    const res = await goodsCommentApi.delete(commentId)
+    // 失败还去刷新列表的话，会让人以为"删了但没刷新出来"，实际是根本没删掉
+    if (res && res.code !== 200) {
+      pageError.value = pickErrorMessage(res, '删除评论失败')
+      return
+    }
     loadComments(commentPage.value)
-  } catch {}
+  } catch {
+    pageError.value = '删除评论失败，请检查网络后重试'
+  }
 }
 
 async function loadImages() {
@@ -286,7 +344,10 @@ async function loadImages() {
       images.value = res.data
       mainImage.value = res.data[0]
     }
-  } catch {}
+  } catch (e) {
+    // 图片挂了不该盖住商品信息本身 —— 只记控制台，页面上仍显示"暂无图片"
+    console.warn('商品图片加载失败', e)
+  }
 }
 
 onMounted(() => {

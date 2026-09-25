@@ -45,6 +45,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { goodsApi, classifyApi, imageApi } from '../api/index.js'
+import { pickErrorMessage } from '../utils/errorMessage.js'
 import ImageUploader from '../components/ImageUploader.vue'
 
 const router = useRouter()
@@ -89,7 +90,7 @@ async function handleSubmit() {
       }
       router.push('/goods')
     } else {
-      error.value = res.detail || res.message || '发布失败'
+      error.value = pickErrorMessage(res, '发布失败，请稍后重试')
     }
   } catch {
     error.value = '网络错误，请稍后重试'
