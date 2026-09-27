@@ -218,6 +218,9 @@ async def login_user(
         # 检验密码是否正确
         password_valid = security.verify_password(password, user.password)
         if password_valid:
+            if not user.is_active:
+                raise HTTPException(
+                    status_code=403, detail="该账户已封禁", )
             # ==========创建访问令牌==============
             access_token = security.create_access_token(
                 user_data={
@@ -292,6 +295,9 @@ async def refresh_token(
         if orm_token is None:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST, detail="刷新令牌不存在", )
+        elif not orm_token.user.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN, detail="该账户已封禁", )
 
         # 库中存的是 sha256 哈希，把用户交上来的原始 token 再哈希一次比对：
         # - 只有「当前存库这把」能过，被轮换/新登录顶掉的旧 token 哈希对不上，直接拒绝

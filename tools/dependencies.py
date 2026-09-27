@@ -45,12 +45,17 @@ class TokenBearer(HTTPBearer):
 
                 # 使用redis缓存检查JTI是否在黑名单中
                 if await is_jti_in_blocklist(token_data["jti"]):
+                    # ## 为什么 detail 用字符串而不是 dict（2026-09-27）
+                    # FastAPI 本身【不限制】detail 的类型，传 dict 是合法的 ——
+                    # 卡住它的是本项目的 tools/exceptions.py::http_exception_handler：
+                    # 它要把所有错误统一成 {code, message, data} 信封，而 message
+                    # 必须是能直接展示给用户的字符串。于是非字符串的 detail 会被塞进
+                    # data、message 退化成状态码兜底文案（「没有权限执行该操作」）——
+                    # 前端不读 data，等于你想说的那句话被埋了。
+                    # 信封里的 message 本来就是"给用户看的那句话"，不必再套一层结构。
                     raise HTTPException(
                         status_code=status.HTTP_403_FORBIDDEN,
-                        detail={
-                            "错误信息":"用户认证信息已过期或无效",
-                            "提示信息":"请获取访问令牌重新尝试访问"
-                                }
+                        detail="用户认证信息已过期或无效，请重新登录",
                     )
 
                 # 把原始 token 塞进返回字典：刷新接口要拿它做 sha256 比对（库里只存哈希）

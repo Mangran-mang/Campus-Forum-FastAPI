@@ -3,6 +3,8 @@ from datetime import datetime
 from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import joinedload
+
 from models.model_token import Token
 from tools.security import hash_token
 
@@ -50,7 +52,8 @@ class TokenService:
         通过用户uid获取ORM类token
         返回token模型或None
         """
-        orm_token = select(Token).where(Token.user_uid == user_uid)
+        orm_token = (select(Token).options(joinedload(Token.user))
+                     .where(Token.user_uid == user_uid))
         result = await db.execute(orm_token)
         return result.scalar_one_or_none()
 

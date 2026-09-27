@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from sqlalchemy import (
-    Integer, String, DateTime, Text, ForeignKey, UniqueConstraint,
+    Integer, String, DateTime, Text, ForeignKey, UniqueConstraint, Index,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -12,7 +12,8 @@ class Message(Base):
     """私信消息表：会话里的每一条消息"""
     __tablename__ = "messages"
     __table_args__ = (
-        UniqueConstraint("conversation_id", "created_time", name="uq_message_conversation"),
+        # UniqueConstraint("conversation_id", "created_time", name="uq_message_conversation"),
+        Index("idx_message_conversation", "conversation_id", "created_time"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True, comment="消息id")
