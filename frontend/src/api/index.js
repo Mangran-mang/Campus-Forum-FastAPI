@@ -117,6 +117,9 @@ export const postApi = {
     if (params.page_size) qs.set('page_size', params.page_size)
     if (params.author_uid) qs.set('author_uid', params.author_uid)
     if (params.category_id) qs.set('category_id', params.category_id)
+    // keyword 交给 URLSearchParams 编码，中文/%、& 等都会被正确处理，
+    // 不需要（也不应该）在前端预先转义 —— LIKE 元字符的转义是后端的事
+    if (params.keyword) qs.set('keyword', params.keyword)
     return request(`/posts/get_posts?${qs}`)
   },
   getDetail: (id) => request(`/posts/get_post/${id}`),

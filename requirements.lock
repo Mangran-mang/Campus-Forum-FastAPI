@@ -1,4 +1,4 @@
-﻿aiohappyeyeballs==2.6.1
+aiohappyeyeballs==2.6.1
 aiohttp==3.13.5
 aiomysql==0.3.2
 aiosignal==1.4.0
@@ -83,3 +83,5 @@ xdis==6.1.8
 xxhash==3.7.0
 yarl==1.23.0
 zstandard==0.25.0
+pytest==9.1.1
+pytest-asyncio==1.4.0

@@ -116,8 +116,8 @@ async def update_user(
                 status_code=status.HTTP_403_FORBIDDEN, detail="无权修改其他用户的信息", )
 
     new_user = await user_service.crud_update_user(db, user_data.email, user_data)
-    new_user_out = UserOutModel.model_validate(new_user)
     if new_user:
+        new_user_out = UserOutModel.model_validate(new_user)
         return success_response(data=new_user_out, message="更新成功")
     else:
         raise UserException()  # 原先是 return {"code":404,...}，HTTP 却是 200

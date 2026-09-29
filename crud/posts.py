@@ -13,6 +13,7 @@ from models import User
 from models.model_posts import Posts
 from schemas.posts import PostsCreateModel, PostsUpdateModel
 from tools.exceptions import PostException
+from tools.query import like_contains
 
 
 class PostService:
@@ -41,7 +42,8 @@ class PostService:
             page_size:int=10,
             author_uid:str=None,
             category_id:int=None,
-            current_user_uid:str=None
+            current_user_uid:str=None,
+            keyword:str=None
             ):
         """
         获取帖子列表
@@ -76,6 +78,16 @@ class PostService:
         if category_id is not None:
             stmt = stmt.where(Posts.category_id == category_id)
             stmt_count = stmt_count.where(Posts.category_id == category_id)
+
+        if keyword:
+            # 关键词：标题【或】正文命中，条件同时应用到列表和 count
+            cond = or_(
+                like_contains(Posts.title, keyword),
+                like_contains(Posts.content, keyword)
+                )
+            if cond is not None:
+                stmt = stmt.where(cond)
+                stmt_count = stmt_count.where(cond)
 
         # 应用可见性条件
         stmt = stmt.where(visibility)

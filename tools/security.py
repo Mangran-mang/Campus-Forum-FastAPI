@@ -59,8 +59,11 @@ def decode_token(token:str):
             algorithms=[Config.JWT_ALGORITHM]
         )
         return token_data
+    except jwt.ExpiredSignatureError as e:
+        logger.info("token 已过期: %s", e)  # 过期是最常见的正常流量，降成 info
+        return None
     except jwt.PyJWTError as e:
-        logger.exception(e)
+        logger.warning("token 解码失败: %s", e)
         return None
 
 def hash_token(token: str) -> str:
