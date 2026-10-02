@@ -4,6 +4,14 @@ venv/
 env/
 .env
 .env.*
+!.env.example
+
+# 本地工作文档（评估/自测/清单，不入库）
+项目评估报告*.html
+复习自测*
+待修清单.md
+迁移文件部署说明.md
+test_main.http
 
 # Python缓存文件
 __pycache__/
