@@ -10,7 +10,7 @@ from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
 from routers import (
     user, posts, comments, category, like, bookmark, notification, goods,
-    goods_classify, goods_comment, image, message, websocket
+    goods_classify, goods_comment, image, message, websocket, admin
 )
 from config import database_config
 from models import model_base
@@ -72,6 +72,7 @@ app.include_router(goods_comment.router)
 app.include_router(image.router)
 app.include_router(message.router)
 app.include_router(websocket.router)
+app.include_router(admin.router)
 
 # 挂载静态文件目录用作图床
 import os

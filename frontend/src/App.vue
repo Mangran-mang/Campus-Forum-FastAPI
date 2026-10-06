@@ -1,24 +1,34 @@
 <template>
   <div id="app-root">
-    <!-- 星空背景层（三层不同速度的星星，缓慢上移） -->
-    <div id="stars"></div>
-    <div id="stars2"></div>
-    <div id="stars3"></div>
-    <AppHeader />
-    <main class="container main-content">
-      <router-view v-slot="{ Component, route }">
-        <Transition name="route" mode="out-in">
-          <component :is="Component" :key="route.fullPath" />
-        </Transition>
-      </router-view>
-    </main>
-    <AppFooter />
+    <!-- 后台路由走独立布局（AdminLayout 自带侧边栏/顶栏），
+         不渲染前台的星空背景、导航和页脚 —— 两套界面互不干扰 -->
+    <template v-if="!isAdmin">
+      <!-- 星空背景层（三层不同速度的星星，缓慢上移） -->
+      <div id="stars"></div>
+      <div id="stars2"></div>
+      <div id="stars3"></div>
+      <AppHeader />
+      <main class="container main-content">
+        <router-view v-slot="{ Component, route }">
+          <Transition name="route" mode="out-in">
+            <component :is="Component" :key="route.fullPath" />
+          </Transition>
+        </router-view>
+      </main>
+      <AppFooter />
+    </template>
+    <router-view v-else />
   </div>
 </template>
 
 <script setup>
+import { computed } from 'vue'
+import { useRoute } from 'vue-router'
 import AppHeader from './components/AppHeader.vue'
 import AppFooter from './components/AppFooter.vue'
+
+const route = useRoute()
+const isAdmin = computed(() => route.path.startsWith('/admin'))
 </script>
 
 <style scoped>

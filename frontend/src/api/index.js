@@ -218,6 +218,46 @@ export const imageApi = {
   delete: (imageId) => request(`/images/${imageId}`, { method: 'DELETE' }),
 }
 
+// ============== 后台管理相关 ==============
+export const adminApi = {
+  // ## 后台独立登录入口，但与前台共用同一套 token 存储
+  // 后端签发与前台同构的双 token（同一账号体系），所以登录成功后
+  // 直接写同一组 localStorage 键 —— 代价：后台登录会顶掉该管理员
+  // 前台的 refresh 会话（前台下次刷新 401 需重登），这是单行模型的既有行为。
+  // 失败语义：非管理员/密码错/邮箱不存在一律 401「邮箱或密码错误」，前端无需也无法区分
+  login: async (data) => {
+    const res = await fetch(`${BASE}/admin/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    })
+    const result = await res.json()
+    if (result.code === 200 && result.data) {
+      saveTokens(result.data.access_token, result.data.refresh_token)
+      localStorage.setItem('user_info', JSON.stringify(result.data.user))
+    }
+    return result
+  },
+  // 三个列表接口的 data 形状统一为 {xxx: [...], total, page, page_size}，
+  // page_size 是后端 clamp 后的生效值（不是请求原值），分页器必须用它算页数
+  getUsers: (params = {}) => {
+    const qs = new URLSearchParams({ page: params.page || 1, page_size: params.page_size || 10 })
+    return request(`/admin/users?${qs}`)
+  },
+  getPosts: (params = {}) => {
+    const qs = new URLSearchParams({ page: params.page || 1, page_size: params.page_size || 10 })
+    return request(`/admin/posts?${qs}`)
+  },
+  getGoods: (params = {}) => {
+    const qs = new URLSearchParams({ page: params.page || 1, page_size: params.page_size || 10 })
+    return request(`/admin/goods?${qs}`)
+  },
+  updateUser: (data) => request('/admin/update_user', { method: 'POST', body: JSON.stringify(data) }),
+  // 删除走 query 传邮箱（后台手动输入场景，不用路径参数）
+  // ⚠️ 后端 delete_user 目前没有「不能删自己」的拦截 —— 前端先挡一层（见 AdminUsersView）
+  deleteUser: (email) => request(`/admin/delete?email=${encodeURIComponent(email)}`, { method: 'DELETE' }),
+}
+
 // ============== 通知相关 ==============
 export const notificationApi = {
   getList: (params = {}) => {
