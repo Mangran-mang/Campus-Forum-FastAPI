@@ -4,7 +4,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-JTI_EXPIRY = 3600# JTI就是JWT的ID
+JTI_EXPIRY = 3600# 到期时间默认常量
 
 # 创建一个Redis客户端连接实例
 redis_kwargs = dict(

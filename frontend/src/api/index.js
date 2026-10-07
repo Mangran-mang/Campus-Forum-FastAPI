@@ -219,11 +219,46 @@ export const imageApi = {
 }
 
 // ============== 后台管理相关 ==============
+// ## 后台是独立的短会话：后端只签 1 小时 access token，没有 refresh token。
+// 存储键与前台完全分开（admin_token / admin_user_info）：
+// 后台登录不顶前台会话；前台登录着也进不了后台（必须单独登一次）。
+const ADMIN_TOKEN_KEY = 'admin_token'
+const ADMIN_INFO_KEY = 'admin_user_info'
+
+function getAdminToken() {
+  return localStorage.getItem(ADMIN_TOKEN_KEY)
+}
+
+// 清后台会话（只动 admin_ 前缀的键，前台登录态不受影响）
+export function clearAdminSession() {
+  localStorage.removeItem(ADMIN_TOKEN_KEY)
+  localStorage.removeItem(ADMIN_INFO_KEY)
+}
+
+// ## 后台专用请求通道：与前台 request() 的三个本质区别
+// 1) 带的是 admin_token（后台登录后若没登过前台，前台 access_token 是空的，
+//    复用 request() 会裸奔 401）
+// 2) 401/403 一律清会话回登录页 —— 后台没有 refresh token，过期只能重登（设计如此）
+// 3) 跳的是 /admin/login，不动前台的登录跳转
+async function adminRequest(path, options = {}) {
+  const token = getAdminToken()
+  const headers = { 'Content-Type': 'application/json', ...options.headers }
+  if (token) headers['Authorization'] = `Bearer ${token}`
+
+  const res = await fetch(`${BASE}${path}`, { ...options, headers })
+
+  // 401 = 没带 token；403 = token 过期/已登出被拉黑/被降权。两种都会话失效
+  if (res.status === 401 || res.status === 403) {
+    clearAdminSession()
+    window.location.hash = '#/admin/login'
+    throw new Error('后台登录已过期，请重新登录')
+  }
+  return res.json()
+}
+
 export const adminApi = {
-  // ## 后台独立登录入口，但与前台共用同一套 token 存储
-  // 后端签发与前台同构的双 token（同一账号体系），所以登录成功后
-  // 直接写同一组 localStorage 键 —— 代价：后台登录会顶掉该管理员
-  // 前台的 refresh 会话（前台下次刷新 401 需重登），这是单行模型的既有行为。
+  // 登录走独立 fetch（不走 adminRequest：登录 401 是"密码错误"，
+  // 不能触发上面"清会话跳登录页"的分支）
   // 失败语义：非管理员/密码错/邮箱不存在一律 401「邮箱或密码错误」，前端无需也无法区分
   login: async (data) => {
     const res = await fetch(`${BASE}/admin/login`, {
@@ -232,30 +267,34 @@ export const adminApi = {
       body: JSON.stringify(data),
     })
     const result = await res.json()
+    // 后台只签 access token（无 refresh）—— 只写后台自己的键，不碰前台会话
     if (result.code === 200 && result.data) {
-      saveTokens(result.data.access_token, result.data.refresh_token)
-      localStorage.setItem('user_info', JSON.stringify(result.data.user))
+      localStorage.setItem(ADMIN_TOKEN_KEY, result.data.access_token)
+      localStorage.setItem(ADMIN_INFO_KEY, JSON.stringify(result.data.user))
     }
     return result
   },
+  // 登出只拉黑后台 access 的 jti（TTL=剩余寿命）；前台会话是另一把 token，不受影响
+  logout: () => adminRequest('/admin/logout', { method: 'POST' }),
+  // 总览：一次返回 6 个 int（用户/帖子/商品 × 总数/今日新增），后端零实体构造
+  getOverview: () => adminRequest('/admin/overview'),
   // 三个列表接口的 data 形状统一为 {xxx: [...], total, page, page_size}，
   // page_size 是后端 clamp 后的生效值（不是请求原值），分页器必须用它算页数
   getUsers: (params = {}) => {
     const qs = new URLSearchParams({ page: params.page || 1, page_size: params.page_size || 10 })
-    return request(`/admin/users?${qs}`)
+    return adminRequest(`/admin/users?${qs}`)
   },
   getPosts: (params = {}) => {
     const qs = new URLSearchParams({ page: params.page || 1, page_size: params.page_size || 10 })
-    return request(`/admin/posts?${qs}`)
+    return adminRequest(`/admin/posts?${qs}`)
   },
   getGoods: (params = {}) => {
     const qs = new URLSearchParams({ page: params.page || 1, page_size: params.page_size || 10 })
-    return request(`/admin/goods?${qs}`)
+    return adminRequest(`/admin/goods?${qs}`)
   },
-  updateUser: (data) => request('/admin/update_user', { method: 'POST', body: JSON.stringify(data) }),
+  updateUser: (data) => adminRequest('/admin/update_user', { method: 'POST', body: JSON.stringify(data) }),
   // 删除走 query 传邮箱（后台手动输入场景，不用路径参数）
-  // ⚠️ 后端 delete_user 目前没有「不能删自己」的拦截 —— 前端先挡一层（见 AdminUsersView）
-  deleteUser: (email) => request(`/admin/delete?email=${encodeURIComponent(email)}`, { method: 'DELETE' }),
+  deleteUser: (email) => adminRequest(`/admin/delete?email=${encodeURIComponent(email)}`, { method: 'DELETE' }),
 }
 
 // ============== 通知相关 ==============

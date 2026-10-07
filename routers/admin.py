@@ -1,23 +1,23 @@
-from datetime import timedelta
-
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from config.database_config import get_database
+from config.redis_config import add_jti_to_blocklist
 from crud.admin import AdminService
 from crud.user import UserService
-from crud.token import TokenService
 from schemas.admin import (
     AdminUserOut,
     AdminPostOut,
     AdminUserPageOut,
     AdminPostsPageOut,
     AdminGoodsPageOut,
+    AdminLoginOut,
+    AdminOverviewOut,
 )
 from schemas.common import Envelope
 from schemas.goods import GoodsOutModel
 from schemas.user import (
-    UserLoginModel, LoginOut, LoginUserOut, UserOutModel, UserUpdateModel,
+    UserLoginModel, LoginUserOut, UserOutModel, UserUpdateModel,
 )
 from tools import security
 from tools.dependencies import UserChecker, AccessTokenBearer
@@ -28,7 +28,6 @@ access_token_bearer = AccessTokenBearer()
 router = APIRouter(prefix="/api/admin", tags=["后台管理"])
 
 user_service = UserService()
-token_service = TokenService()
 # ## 后续所有管理接口（用户管理/统计聚合…）统一挂它
 # 见《后台管理开发注意事项》3.5：权限边界要能"扫一眼"看出来 ——
 # 漏挂不会报错、不会 500，只会"页面上多了点不该看的数据"。
@@ -42,7 +41,7 @@ admin_service = AdminService()
 DUMMY_HASH = security.get_password_hash("对齐时间的假密码")
 
 
-@router.post("/login", response_model=Envelope[LoginOut])
+@router.post("/login", response_model=Envelope[AdminLoginOut])
 async def admin_login(
         login_data: UserLoginModel,
         db: AsyncSession = Depends(get_database),
@@ -74,25 +73,17 @@ async def admin_login(
                     "email": user.email,
                     "user_uid": str(user.uid)
                 }, )
-            refresh_token = security.create_access_token(
-                user_data={
-                    "email": user.email,
-                    "user_uid": str(user.uid)
-                }, expiry=timedelta(days=2), refresh=True, )
+
+            # 我希望每次进入后台都单独登录，所以不再更新刷新令牌
+            # refresh_token = security.create_access_token(
+            #     user_data={
+            #         "email": user.email,
+            #         "user_uid": str(user.uid)
+            #     }, expiry=timedelta(days=2), refresh=True, )
             # ============================================================
 
-            refresh_token_details = security.decode_token(refresh_token)
-
-            # 单行模型：库里已有该用户的 refresh 就覆盖（新会话顶掉旧会话）
-            orm_token = await token_service.crud_get_token_by_user_uid(db, user.uid)
-            if orm_token is None:
-                await token_service.crud_add_token(db, refresh_token, refresh_token_details)
-            else:
-                await token_service.crud_update_token(db, refresh_token, refresh_token_details)
-
-            login_out = LoginOut(
+            login_out = AdminLoginOut(
                 access_token=access_token,
-                refresh_token=refresh_token,
                 user=LoginUserOut(
                     email=user.email,
                     uid=str(user.uid),
@@ -107,6 +98,13 @@ async def admin_login(
         security.verify_password(password, DUMMY_HASH)  # 纯为对齐时间，返回值弃用
         raise HTTPException(
             status_code=401, detail="邮箱或密码错误", )
+
+@router.post("/logout",response_model=Envelope[None])
+async def logout(
+    token_data: dict = Depends(access_token_bearer),
+):
+    await add_jti_to_blocklist(token_data["jti"])
+    return success_response(message="登出成功")
 
 
 @router.post("/update_user",response_model=Envelope[UserOutModel])
@@ -208,3 +206,15 @@ async def get_goods(
         }
         , message="获取成功"
     )
+
+@router.get("/overview", response_model=Envelope[AdminOverviewOut])
+async def get_overview(
+        user_identity=Depends(user_checker),
+        db: AsyncSession = Depends(get_database),
+):
+    # ## 为什么不是 a,b,c = await ... 那种元组解构
+    # crud 返回的是 dict（键来自 select 里的 label）：解构 dict 拿到的是"键"而不是"值"，
+    # 数量对不上还会直接 ValueError。契约是 dict 就用 dict 接 ——
+    # 模型字段名与这些键同名，model_validate 按名取值，天然对齐。
+    data = await admin_service.get_overview(db)
+    return success_response(data=AdminOverviewOut.model_validate(data), message="获取成功")

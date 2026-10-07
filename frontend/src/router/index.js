@@ -18,6 +18,7 @@ import ChatView from '../views/ChatView.vue'
 // ---------- 后台管理 ----------
 import AdminLoginView from '../views/admin/AdminLoginView.vue'
 import AdminLayout from '../views/admin/AdminLayout.vue'
+import AdminDashboardView from '../views/admin/AdminDashboardView.vue'
 import AdminUsersView from '../views/admin/AdminUsersView.vue'
 import AdminPostsView from '../views/admin/AdminPostsView.vue'
 import AdminGoodsView from '../views/admin/AdminGoodsView.vue'
@@ -47,7 +48,8 @@ const routes = [
     component: AdminLayout,
     meta: { admin: true },
     children: [
-      { path: '', redirect: '/admin/users' },
+      { path: '', redirect: '/admin/dashboard' },
+      { path: 'dashboard', name: 'AdminDashboard', component: AdminDashboardView },
       { path: 'users', name: 'AdminUsers', component: AdminUsersView },
       { path: 'posts', name: 'AdminPosts', component: AdminPostsView },
       { path: 'goods', name: 'AdminGoods', component: AdminGoodsView },
@@ -61,21 +63,23 @@ const router = createRouter({
 })
 
 // ## 前端路由守卫只是「体验层」，不是安全边界
-// 它读的是 localStorage —— 任何人 F12 就能伪造 user_info，所以真正的权限
+// 它读的是 localStorage —— 任何人 F12 就能伪造，所以真正的权限
 // 边界在后端每个 /api/admin/* 接口上的 UserChecker(True)（实时查库）。
-// 这里拦截的目的只有一个：让非管理员别在后台页面里白点一圈然后处处 403，
+// 这里拦截的目的只有一个：让没登录后台的人别在后台页面里白点一圈然后处处 401/403，
 // 而是在门口就被引导到后台登录页。
+// ## 后台是独立短会话（admin_token），与前台登录态无关：
+// 前台登录着也必须单独登录后台（step-up），后台登录也不影响前台。
 router.beforeEach((to) => {
   if (!to.path.startsWith('/admin')) return true
   if (to.name === 'AdminLogin') return true
 
   let info = null
   try {
-    info = JSON.parse(localStorage.getItem('user_info') || 'null')
+    info = JSON.parse(localStorage.getItem('admin_user_info') || 'null')
   } catch {
     info = null
   }
-  const token = localStorage.getItem('access_token')
+  const token = localStorage.getItem('admin_token')
   if (!token || !info || info.is_superuser !== true) {
     return { name: 'AdminLogin' }
   }

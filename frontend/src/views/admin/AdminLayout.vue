@@ -4,6 +4,7 @@
     <aside class="admin-aside">
       <div class="admin-brand">漫燃社区 · 后台</div>
       <nav class="admin-nav">
+        <router-link to="/admin/dashboard" class="admin-nav-item">数据看板</router-link>
         <router-link to="/admin/users" class="admin-nav-item">用户管理</router-link>
         <router-link to="/admin/posts" class="admin-nav-item">帖子管理</router-link>
         <router-link to="/admin/goods" class="admin-nav-item">商品管理</router-link>
@@ -34,28 +35,30 @@
 <script setup>
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { userApi, clearAuth } from '../../api/index.js'
+import { adminApi, clearAdminSession } from '../../api/index.js'
 
 const router = useRouter()
 
+// 读后台自己的会话信息（admin_user_info），前台 user_info 与这里无关
 const whoami = computed(() => {
   try {
-    return JSON.parse(localStorage.getItem('user_info') || '{}')
+    return JSON.parse(localStorage.getItem('admin_user_info') || '{}')
   } catch {
     return {}
   }
 })
 
 async function handleLogout() {
-  // 退出后台 = 退出整个账号（前后台同一套 token），回后台登录页
+  // 退出后台只清后台会话：调后台专属 /admin/logout（只拉黑后台 access 的 jti），
+  // 前台登录态是另一套键另一把 token，完全不受影响
   try {
-    await userApi.logout()
+    await adminApi.logout()
   } catch (e) {
-    // 登出接口失败（如 token 已失效）不阻塞登出：本地状态照清。
+    // 登出接口失败（如 token 已过期被 403 拦截）不阻塞登出：本地状态照清。
     // 但要留痕 —— 空 catch 会把真实故障（网络断/后端挂）静默吞掉
     console.warn('logout 接口失败，仍继续本地登出:', e)
   }
-  clearAuth()
+  clearAdminSession()
   router.push('/admin/login')
 }
 </script>
