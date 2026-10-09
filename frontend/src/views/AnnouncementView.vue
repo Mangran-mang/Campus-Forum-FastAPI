@@ -6,6 +6,16 @@
       <!-- 在这里添加新的公告条目，最新的放在最上面 -->
       <!-- 格式：复制一条 .announce-item，修改日期和内容 -->
       <div class="announce-item card">
+      <div class="announce-date">2026-10-09</div>
+        <h3>校园墙功能更新</h3>
+        <p>郑财校园墙1.82拓展</p>
+        <ul>
+          <li> 后台增加趋势图、饼图等统计信息</li>
+        </ul>
+        <p>如有问题反馈至3511687086@qq.com</p>
+      </div>
+
+      <div class="announce-item card">
       <div class="announce-date">2026-10-06</div>
         <h3>校园墙功能更新</h3>
         <p>郑财校园墙1.80拓展</p>

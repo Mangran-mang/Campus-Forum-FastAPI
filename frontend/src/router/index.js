@@ -15,13 +15,17 @@ import EditGoodsView from '../views/EditGoodsView.vue'
 import MessagesView from '../views/MessagesView.vue'
 import ChatView from '../views/ChatView.vue'
 
-// ---------- 后台管理 ----------
-import AdminLoginView from '../views/admin/AdminLoginView.vue'
-import AdminLayout from '../views/admin/AdminLayout.vue'
-import AdminDashboardView from '../views/admin/AdminDashboardView.vue'
-import AdminUsersView from '../views/admin/AdminUsersView.vue'
-import AdminPostsView from '../views/admin/AdminPostsView.vue'
-import AdminGoodsView from '../views/admin/AdminGoodsView.vue'
+// ---------- 后台管理（懒加载）----------
+// ## 为什么这里用动态 import 而不是顶部静态 import
+// 后台是低频入口，且数据看板依赖 echarts（按需引入后仍有 ~190KB gzip）。
+// 静态 import 会把它打进主包 —— 前台访客根本不看后台，却要为此多下载 3 倍体积。
+// 动态 import 让 Vite 把 /admin 相关代码单独拆 chunk，只在真正访问时才加载。
+const AdminLoginView = () => import('../views/admin/AdminLoginView.vue')
+const AdminLayout = () => import('../views/admin/AdminLayout.vue')
+const AdminDashboardView = () => import('../views/admin/AdminDashboardView.vue')
+const AdminUsersView = () => import('../views/admin/AdminUsersView.vue')
+const AdminPostsView = () => import('../views/admin/AdminPostsView.vue')
+const AdminGoodsView = () => import('../views/admin/AdminGoodsView.vue')
 
 const routes = [
   { path: '/', redirect: '/posts' },

@@ -1,10 +1,10 @@
-from datetime import date
+from datetime import date, timedelta
 
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
-from models import User, Posts, Goods, Comments, Like
+from models import User, Posts, Goods, Comments, Like, GoodsClassify, Category
 
 
 class AdminService:
@@ -126,7 +126,10 @@ class AdminService:
     # crud/admin.py
     from datetime import date
 
-    async def get_overview(self, db: AsyncSession):
+    async def get_overview(self, db: AsyncSession):# 重点问题
+        """
+        返回总数据信息和新增数据信息
+        """
         today = date.today()  # 本地日期，与 created_time 存储基准一致
 
         # ## 为什么每个 count 都要 select_from
@@ -152,10 +155,19 @@ class AdminService:
             today_new(Goods).label("goods_today"),
         )
         row = (await db.execute(stmt)).one()
-        return dict(row._mapping)  # 8 个 int，一个 ORM 实体都不构造
+        return dict(row._mapping)  # 6 个 int，一个 ORM 实体都不构造
 
-    """async def get_trends(self, db: AsyncSession, days: int):
-        start = date.today() - timedelta(days=days - 1)
+    async def get_trends(self, db: AsyncSession, days: int):
+        """
+        返回帖子趋势信息
+        """
+        # ## 为什么必须 clamp
+        # 补零是按 days 生成定长序列的：?days=99999 会让这一行生成近十万个 dict，
+        # 响应体 4MB+（实测），序列化和传输全部白烧。上层是 Query 参数，不可信。
+        days = min(max(days, 1), 90)
+
+        start = date.today() - timedelta(days=days - 1)# 今天日期减去天数
+        # 拿到days条数据
         stmt = (
             select(
                 func.date(Posts.created_time).label("date"),
@@ -165,7 +177,7 @@ class AdminService:
             .group_by(
                 func.date(Posts.created_time)
             )  # 函数包裹在分组上，行集已被过滤缩小，无妨
-        )
+        )# 按天分组，统计每天的帖子数量
         rows = (await db.execute(stmt)).all()
         found = {str(r.date): r.count for r in rows}
         # ## 补零：缺的天填 0，前端拿到就能画，不用做日期对齐
@@ -176,6 +188,51 @@ class AdminService:
             }
             for i in range(days)
         ]
-        return result"""
+        return result
 
+    async def get_categorical_data(self, db: AsyncSession):
+        """
+        帖子按板块分布 / 商品按分类分布
+
+        ## 为什么是两条独立查询，不是一条
+        两个分布各自是「多行结果集」，不能像 overview 那样并排放进一条 select：
+        并排会变成标量子查询，而标量子查询要求恰好一行一列 —— 多行多列报 1241。
+        「一条 SQL 拿多个值」只对**标量**成立。
+
+        ## 为什么必须 .select_from(Posts)
+        select 列表里同时出现 Posts.id（聚合参数）和 Category.name，
+        SQLAlchemy 推 FROM 时可能把 Category 当左表 → 变成 categories LEFT JOIN posts，
+        方向反了。显式 select_from 把左表钉死。
+
+        ## 为什么 outerjoin + COALESCE
+        帖子/商品可能有空板块（实测见过 category_id = null）。
+        INNER JOIN 会把整行丢掉 → 各扇区加起来 ≠ 总数，且不报错。
+        outerjoin + COALESCE 把它们归入「未分区/未分类」，总数守恒。
+        """
+        post_stmt = (
+            select(
+                func.coalesce(Category.name, "未分区").label("name"),
+                func.count(Posts.id).label("count"),
+            )
+            .select_from(Posts)
+            .outerjoin(Category, Posts.category_id == Category.id)
+            .group_by(func.coalesce(Category.name, "未分区"))
+            .order_by(func.count(Posts.id).desc())
+        )
+        goods_stmt = (
+            select(
+                func.coalesce(GoodsClassify.name, "未分类").label("name"),
+                func.count(Goods.gid).label("count"),
+            )
+            .select_from(Goods)
+            .outerjoin(GoodsClassify, Goods.classify == GoodsClassify.id)
+            .group_by(func.coalesce(GoodsClassify.name, "未分类"))
+            .order_by(func.count(Goods.gid).desc())
+        )
+        post_rows = (await db.execute(post_stmt)).all()
+        goods_rows = (await db.execute(goods_stmt)).all()
+        return (
+            [{"name": r.name, "count": r.count} for r in post_rows],
+            [{"name": r.name, "count": r.count} for r in goods_rows],
+        )
 

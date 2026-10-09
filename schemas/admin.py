@@ -61,3 +61,17 @@ class AdminOverviewOut(BaseModel):
     post_today: int
     goods_total: int
     goods_today: int
+
+# schemas/admin.py
+class AdminTrendsOut(BaseModel):
+    """列式返回：dates 喂 ECharts 的 xAxis，posts 喂 series.data，前端零转换"""
+    dates: list[str]
+    posts: list[int]
+
+class DistItemOut(BaseModel):
+    name: str
+    count: int
+
+class AdminDistributionOut(BaseModel):
+    post_categories: list[DistItemOut]
+    goods_classifies: list[DistItemOut]

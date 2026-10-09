@@ -278,6 +278,12 @@ export const adminApi = {
   logout: () => adminRequest('/admin/logout', { method: 'POST' }),
   // 总览：一次返回 6 个 int（用户/帖子/商品 × 总数/今日新增），后端零实体构造
   getOverview: () => adminRequest('/admin/overview'),
+  // 趋势：列式返回 {dates: [...], posts: [...]}，ECharts 直接吃
+  // days 由后端 clamp（1~90），7/30 切换复用同一个接口
+  getTrends: (days = 7) => adminRequest(`/admin/trends?days=${days}`),
+  // 分布：{post_categories: [{name,count}], goods_classifies: [{name,count}]}
+  // 后端已用 outerjoin + COALESCE 兜住空分类，前端直接画
+  getDistribution: () => adminRequest('/admin/distribution'),
   // 三个列表接口的 data 形状统一为 {xxx: [...], total, page, page_size}，
   // page_size 是后端 clamp 后的生效值（不是请求原值），分页器必须用它算页数
   getUsers: (params = {}) => {
