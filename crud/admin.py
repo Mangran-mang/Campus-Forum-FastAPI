@@ -4,6 +4,7 @@ from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
+from config.redis_config import get_daily_active_count
 from models import User, Posts, Goods, Comments, Like, GoodsClassify, Category
 
 
@@ -205,7 +206,7 @@ class AdminService:
         方向反了。显式 select_from 把左表钉死。
 
         ## 为什么 outerjoin + COALESCE
-        帖子/商品可能有空板块（实测见过 category_id = null）。
+        帖子/商品可能有空板块
         INNER JOIN 会把整行丢掉 → 各扇区加起来 ≠ 总数，且不报错。
         outerjoin + COALESCE 把它们归入「未分区/未分类」，总数守恒。
         """
@@ -235,4 +236,17 @@ class AdminService:
             [{"name": r.name, "count": r.count} for r in post_rows],
             [{"name": r.name, "count": r.count} for r in goods_rows],
         )
+
+    async def get_daily_activity(self, days: int):
+        """近 days 天的日活（数据源是 Redis，不碰 MySQL）"""
+        days = min(max(days, 1), 2)
+        today = date.today()
+        return [
+            {
+                "date": (today - timedelta(days=i)).isoformat(),
+                "uv": await get_daily_active_count(today - timedelta(days=i)),
+            }
+            for i in range(days - 1, -1, -1)     # 从早到晚，与 trends 顺序一致
+        ]
+
 

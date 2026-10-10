@@ -284,6 +284,10 @@ export const adminApi = {
   // 分布：{post_categories: [{name,count}], goods_classifies: [{name,count}]}
   // 后端已用 outerjoin + COALESCE 兜住空分类，前端直接画
   getDistribution: () => adminRequest('/admin/distribution'),
+  // 日活：{dates: [昨天, 今天], uv: [n, n]}
+  // ⚠️ 后端上限钉死在 2 天（Redis 里日活 key 的 TTL 只有 2 天，更早的已被自动清理），
+  // 所以这里不传 days —— 数据源决定能力，参数给大了也只是拿回一串 0
+  getActivity: () => adminRequest('/admin/activity'),
   // 三个列表接口的 data 形状统一为 {xxx: [...], total, page, page_size}，
   // page_size 是后端 clamp 后的生效值（不是请求原值），分页器必须用它算页数
   getUsers: (params = {}) => {

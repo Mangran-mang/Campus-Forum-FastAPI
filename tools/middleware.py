@@ -8,6 +8,9 @@ from starlette.middleware.cors import CORSMiddleware
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from config.config import Config
+from config.redis_config import mark_daily_active
+from tools.security import decode_token
+
 
 def register_middleware(app: FastAPI):
     """
@@ -27,11 +30,28 @@ def register_middleware(app: FastAPI):
 
     app.add_middleware(  # 设置app可被跨域访问
         CORSMiddleware,  # 中间件类 跨域中间件
-        allow_origins=[o.strip() for o in  Config.CORS_ORIGINS.split(",")],  # *代表所有，允许所有源访问，这里需要换成自己的域名
+        allow_origins=[
+            o.strip() for o in Config.CORS_ORIGINS.split(",")
+        ],  # *代表所有，允许所有源访问，这里需要换成自己的域名
         allow_credentials=True,  # 允许携带cookie
         allow_methods=["*"],  # 允许所有请求方法
         allow_headers=["*"],  # 允许所有请求头
     )
+
+    @app.middleware("http")
+    async def record_daily_active(request: Request, call_next):
+        # 活跃定义：请求带合法 token 就算"今天来过"—— 潜水用户刷帖也算，
+        # 这才是运营看的 DAU（不是"发帖人数"）。
+        # 只解 JWT 不查库（HMAC 验签，微秒级），任何异常静默跳过。
+        try:
+            auth = request.headers.get("Authorization", "")
+            if auth.startswith("Bearer "):
+                token_data = decode_token(auth[7:])
+                if token_data:
+                    await mark_daily_active(token_data["user"]["user_uid"])
+        except Exception:
+            pass
+        return await call_next(request)     # 埋点在放行之前 —— 请求到了就算来过
 
     # @app.middleware("http")
     # async def authorization(request:Request,call_next):

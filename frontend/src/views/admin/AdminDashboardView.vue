@@ -15,6 +15,18 @@
             今日新增 {{ item.today }}
           </span>
         </div>
+
+        <!-- 日活单独一张：数据来自 Redis（另两个接口查的是 MySQL），副标题形态也不同 -->
+        <div v-if="activity" class="card dash-card">
+          <span class="dash-label">今日活跃</span>
+          <span class="dash-value">{{ activity.today }}</span>
+          <span class="dash-today" :class="{ 'is-zero': activity.today === 0 }">
+            昨日 {{ activity.yesterday }}
+            <template v-if="activity.delta !== null">
+              · {{ activity.delta >= 0 ? '↑' : '↓' }}{{ Math.abs(activity.delta) }}%
+            </template>
+          </span>
+        </div>
       </div>
 
       <!-- 趋势折线 -->
@@ -61,6 +73,7 @@ import { pickErrorMessage } from '../../utils/errorMessage.js'
 const overview = ref(null)
 const trends = ref(null)
 const distribution = ref(null)
+const activityRaw = ref(null)
 const error = ref('')
 const days = ref(7)
 const loadingTrend = ref(false)
@@ -92,6 +105,22 @@ const cards = computed(() => {
   ]
 })
 
+// 日活卡片：后端固定给 [昨天, 今天] 两天（Redis 里只存两天）
+// delta 为 null 表示不显示环比 —— 昨日为 0 时算不出百分比（除零），
+// 而且埋点首日的"今日"只是从埋点时刻起的半天数据，拿它跟 0 比是误导
+const activity = computed(() => {
+  if (!activityRaw.value) return null
+  const uv = activityRaw.value.uv
+  if (!uv.length) return null
+  const today = uv[uv.length - 1]
+  const yesterday = uv.length > 1 ? uv[uv.length - 2] : 0
+  return {
+    today,
+    yesterday,
+    delta: yesterday > 0 ? Math.round(((today - yesterday) / yesterday) * 100) : null,
+  }
+})
+
 onMounted(async () => {
   window.addEventListener('resize', handleResize)
   await loadAll()
@@ -109,10 +138,11 @@ onBeforeUnmount(() => {
 
 async function loadAll() {
   try {
-    const [o, t, dist] = await Promise.all([
+    const [o, t, dist, act] = await Promise.all([
       adminApi.getOverview(),
       adminApi.getTrends(days.value),
       adminApi.getDistribution(),
+      adminApi.getActivity(),
     ])
     if (o.code !== 200) {
       error.value = pickErrorMessage(o, '加载失败')
@@ -121,6 +151,8 @@ async function loadAll() {
     overview.value = o.data
     if (t.code === 200) trends.value = t.data
     if (dist.code === 200) distribution.value = dist.data
+    // 日活失败不阻断整页 —— 数据源是 Redis，挂了不该让卡片和图表全白
+    if (act.code === 200) activityRaw.value = act.data
 
     await nextTick() // 等 v-else 分支的 DOM 真正渲染出来，容器有尺寸才能 init
     renderTrend()
@@ -266,7 +298,7 @@ function handleResize() {
 }
 .dash-cards {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 16px;
 }
 .dash-card {
@@ -346,8 +378,15 @@ function handleResize() {
   gap: 16px;
 }
 @media (max-width: 900px) {
-  .dash-cards,
+  .dash-cards {
+    grid-template-columns: repeat(2, 1fr);
+  }
   .dash-pies {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 600px) {
+  .dash-cards {
     grid-template-columns: 1fr;
   }
 }

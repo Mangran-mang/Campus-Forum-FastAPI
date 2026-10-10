@@ -16,6 +16,7 @@ from schemas.admin import (
     AdminTrendsOut,
     AdminDistributionOut,
     DistItemOut,
+    AdminActivityOut,
 )
 from schemas.common import Envelope
 from schemas.goods import GoodsOutModel
@@ -266,12 +267,24 @@ async def get_trends(
 async def get_distribution(
         user_identity=Depends(user_checker),
         db: AsyncSession = Depends(get_database),
-):
+): # 重点讲解
     post_rows, goods_rows = await admin_service.get_categorical_data(db)
     return success_response(
         data=AdminDistributionOut(
             post_categories=[DistItemOut(**r) for r in post_rows],
             goods_classifies=[DistItemOut(**r) for r in goods_rows],
         ),
+        message="获取成功",
+    )
+
+@router.get("/activity", response_model=Envelope[AdminActivityOut])
+async def get_activity(
+        user_identity=Depends(user_checker),
+        days: int = 2,
+):
+    # 注意这里没有 Depends(get_database) —— 数据全来自 Redis，不该索取数据库会话
+    rows = await admin_service.get_daily_activity(days)
+    return success_response(
+        data=AdminActivityOut(dates=[r["date"] for r in rows], uv=[r["uv"] for r in rows]),
         message="获取成功",
     )

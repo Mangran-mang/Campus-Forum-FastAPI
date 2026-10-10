@@ -1,10 +1,13 @@
 from redis.asyncio import Redis
 from config.config import Config
+from datetime import date
 import logging
 
 logger = logging.getLogger(__name__)
 
 JTI_EXPIRY = 3600# 到期时间默认常量
+
+DAILY_ACTIVE_TTL = 172800 # 48*60*60 两天的秒数
 
 # 创建一个Redis客户端连接实例
 redis_kwargs = dict(
@@ -24,7 +27,7 @@ async def add_jti_to_blocklist(jti: str,expiry:int=JTI_EXPIRY):
     默认过期时间为1小时
     """
     try:
-        await token_blocklist.set(name=jti, value="", ex=expiry)
+        await token_blocklist.set(name=jti, value="", ex=expiry)# 这里的ex就是所谓的TTL,代表了过期时间,设了redis才会自动清理
     except Exception as e:
         logger.warning(f"JTI添加到黑名单失败{e}")
 
@@ -56,3 +59,23 @@ async def try_report_deduplicate(post_id: int, user_uid: str, ttl: int = 86400) 
     except Exception as e:
         logger.warning(f"检查举报去重缓存失败{e}")
         return True
+
+async def mark_daily_active(user_uid:str)->None:
+    """
+    标记用户每日活跃
+    """
+    key = f"active:{date.today().isoformat()}"  # 以今天日志为键
+    try:
+        added = await token_blocklist.sadd(key, user_uid)# sadd往集合中新增元素
+        if added:
+            await token_blocklist.expire(key, DAILY_ACTIVE_TTL)# expire防止内存泄漏
+    except Exception as e:
+        logger.warning("记录日活失败: %s", e)
+
+async def get_daily_active_count(day: date) -> int:
+    """取某天的活跃用户数；Redis 不可用或当天无数据都返回 0"""
+    try:
+        return await token_blocklist.scard(f"active:{day.isoformat()}")# scard返回集合元素个数
+    except Exception as e:
+        logger.warning("读取日活失败: %s", e)
+        return 0

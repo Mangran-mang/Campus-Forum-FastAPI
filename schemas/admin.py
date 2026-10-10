@@ -75,3 +75,7 @@ class DistItemOut(BaseModel):
 class AdminDistributionOut(BaseModel):
     post_categories: list[DistItemOut]
     goods_classifies: list[DistItemOut]
+
+class AdminActivityOut(BaseModel):
+    dates: list[str]
+    uv: list[int]
