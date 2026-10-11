@@ -15,7 +15,21 @@
 
     <div class="chart-row">
       <div class="card chart-card">
-        <span class="chart-title">近 2 天新增帖子</span>
+        <div class="chart-head">
+          <span class="chart-title">近 {{ trendDays }} 天新增帖子</span>
+          <div class="chart-range">
+            <button
+              v-for="n in [7, 30]"
+              :key="n"
+              class="range-btn"
+              :class="{ active: trendDays === n }"
+              :disabled="loadingTrend"
+              @click="switchTrendDays(n)"
+            >
+              近 {{ n }} 天
+            </button>
+          </div>
+        </div>
         <AdminChart v-if="trend" :option="trendOption" :height="220" />
       </div>
       <div class="card chart-card">
@@ -88,15 +102,16 @@ const PAGE_SIZE = 10
 const stats = ref({})
 const trend = ref(null)          // { dates: [...], posts: [...] }
 const postCategories = ref([])   // [{ name, count }]
+const trendDays = ref(7)
+const loadingTrend = ref(false)
 
-// 只取近 2 天：后台关注的是"这两天有没有人发帖"，30 天的长趋势对日常运营没意义
 const trendOption = computed(() =>
   trend.value ? barOption(trend.value.dates, trend.value.posts, '新增帖子') : {},
 )
 const pieOpt = computed(() => pieOption(postCategories.value, '篇'))
 const recentSub = computed(() => {
   const sum = (trend.value?.posts || []).reduce((a, b) => a + b, 0)
-  return `近 2 天共 ${sum} 篇`
+  return `近 ${trendDays.value} 天共 ${sum} 篇`
 })
 
 const posts = ref([])
@@ -139,7 +154,7 @@ async function loadStats() {
   try {
     const [o, t, d] = await Promise.all([
       adminApi.getOverview(),
-      adminApi.getTrends(2),
+      adminApi.getTrends(trendDays.value),
       adminApi.getDistribution(),
     ])
     if (o.code === 200) stats.value = o.data
@@ -147,6 +162,21 @@ async function loadStats() {
     if (d.code === 200) postCategories.value = d.data.post_categories
   } catch (e) {
     console.warn('统计数据加载失败:', e)
+  }
+}
+
+// 切换趋势区间：后端 days 上限 90，这里只暴露 7 / 30 两档
+async function switchTrendDays(n) {
+  if (trendDays.value === n || loadingTrend.value) return
+  trendDays.value = n
+  loadingTrend.value = true
+  try {
+    const res = await adminApi.getTrends(n)
+    if (res.code === 200) trend.value = res.data
+  } catch (e) {
+    console.warn('趋势数据加载失败:', e)
+  } finally {
+    loadingTrend.value = false
   }
 }
 
@@ -173,6 +203,39 @@ onMounted(() => {
 }
 .chart-card {
   padding: 16px 18px 10px;
+}
+.chart-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+.chart-range {
+  display: flex;
+  gap: 6px;
+}
+.range-btn {
+  padding: 2px 10px;
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-secondary);
+}
+.range-btn:hover:not(:disabled) {
+  border-color: var(--border-hover);
+  color: var(--text);
+}
+.range-btn.active {
+  background: var(--primary-light);
+  border-color: var(--primary);
+  color: var(--primary);
+}
+.range-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
 }
 .chart-title {
   display: block;
