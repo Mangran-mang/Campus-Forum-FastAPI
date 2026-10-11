@@ -2,6 +2,34 @@
   <div class="admin-page">
     <h3 class="admin-title">用户管理</h3>
 
+    <!-- 统计卡片：overview 返回的 6 个字段全部用上（3 个总数 + 3 个今日新增），外加 Redis 日活 -->
+    <div class="stat-row">
+      <AdminStatCard
+        label="用户总数"
+        :value="stats.user_total ?? 0"
+        :sub="`今日新增 ${stats.user_today ?? 0}`"
+        :muted="!stats.user_today"
+      />
+      <AdminStatCard
+        label="帖子总数"
+        :value="stats.post_total ?? 0"
+        :sub="`今日新增 ${stats.post_today ?? 0}`"
+        :muted="!stats.post_today"
+      />
+      <AdminStatCard
+        label="商品总数"
+        :value="stats.goods_total ?? 0"
+        :sub="`今日新增 ${stats.goods_today ?? 0}`"
+        :muted="!stats.goods_today"
+      />
+      <AdminStatCard
+        label="今日活跃"
+        :value="activity.today ?? 0"
+        :sub="activitySub"
+        :muted="!activity.today"
+      />
+    </div>
+
     <div class="card admin-table-card">
       <table class="admin-table">
         <thead>
@@ -90,8 +118,13 @@
 import { computed, onMounted, ref } from 'vue'
 import { adminApi } from '../../api/index.js'
 import { pickErrorMessage } from '../../utils/errorMessage.js'
+import AdminStatCard from '../../components/admin/AdminStatCard.vue'
 
 const PAGE_SIZE = 10
+
+// 统计卡片数据：stats 来自 MySQL 聚合（overview），activity 来自 Redis 日活
+const stats = ref({})
+const activity = ref({})
 
 const users = ref([])
 const total = ref(0)
@@ -104,12 +137,23 @@ const editForm = ref({ email: '', nickname: '', gender: '未知' })
 const editError = ref('')
 const editLoading = ref(false)
 
+// ⚠️ 后台会话存在 admin_user_info（不是前台的 user_info）——
+// 读错了这里会恒为空对象，"不能删自己"的前端拦截就形同虚设
 const whoami = computed(() => {
   try {
-    return JSON.parse(localStorage.getItem('user_info') || '{}')
+    return JSON.parse(localStorage.getItem('admin_user_info') || '{}')
   } catch {
     return {}
   }
+})
+
+// 日活卡片副标题：昨日值 + 环比（昨日为 0 时不给百分比，避免除零与误导）
+const activitySub = computed(() => {
+  const today = activity.value.today ?? 0
+  const yesterday = activity.value.yesterday ?? 0
+  if (!yesterday) return `昨日 ${yesterday}`
+  const pct = Math.round(((today - yesterday) / yesterday) * 100)
+  return `昨日 ${yesterday} · ${pct >= 0 ? '↑' : '↓'}${Math.abs(pct)}%`
 })
 
 const totalPages = computed(() => Math.max(1, Math.ceil(total.value / PAGE_SIZE)))
@@ -196,7 +240,27 @@ async function handleDelete(u) {
   }
 }
 
-onMounted(() => load(1))
+// 统计卡片失败不该影响表格 —— Redis 挂了也只有日活卡片显示 0
+async function loadStats() {
+  try {
+    const [o, a] = await Promise.all([adminApi.getOverview(), adminApi.getActivity()])
+    if (o.code === 200) stats.value = o.data
+    if (a.code === 200) {
+      const uv = a.data.uv || []
+      activity.value = {
+        today: uv[uv.length - 1] ?? 0,
+        yesterday: uv.length > 1 ? uv[uv.length - 2] : 0,
+      }
+    }
+  } catch (e) {
+    console.warn('统计数据加载失败:', e)
+  }
+}
+
+onMounted(() => {
+  load(1)
+  loadStats()
+})
 </script>
 
 <style scoped>
@@ -206,6 +270,22 @@ onMounted(() => load(1))
 .admin-title {
   margin-bottom: 16px;
   font-size: 18px;
+}
+.stat-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 16px;
+}
+@media (max-width: 900px) {
+  .stat-row {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+@media (max-width: 600px) {
+  .stat-row {
+    grid-template-columns: 1fr;
+  }
 }
 .admin-table-card {
   overflow-x: auto;

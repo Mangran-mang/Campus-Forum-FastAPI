@@ -181,7 +181,7 @@ class AdminService:
         )# 按天分组，统计每天的帖子数量
         rows = (await db.execute(stmt)).all()
         found = {str(r.date): r.count for r in rows}
-        # ## 补零：缺的天填 0，前端拿到就能画，不用做日期对齐
+        # 补零：缺的天填 0，前端拿到就能画，不用做日期对齐
         result = [
             {
                 "date": (start + timedelta(days=i)).isoformat(),

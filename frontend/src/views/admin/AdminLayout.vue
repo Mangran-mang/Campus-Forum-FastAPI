@@ -2,9 +2,8 @@
   <div class="admin-shell">
     <!-- 侧边导航 -->
     <aside class="admin-aside">
-      <div class="admin-brand">漫燃社区 · 后台</div>
+      <div class="admin-brand">郑财校园墙后台系统</div>
       <nav class="admin-nav">
-        <router-link to="/admin/dashboard" class="admin-nav-item">数据看板</router-link>
         <router-link to="/admin/users" class="admin-nav-item">用户管理</router-link>
         <router-link to="/admin/posts" class="admin-nav-item">帖子管理</router-link>
         <router-link to="/admin/goods" class="admin-nav-item">商品管理</router-link>

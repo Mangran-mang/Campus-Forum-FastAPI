@@ -2,6 +2,22 @@
   <div class="admin-page">
     <h3 class="admin-title">商品管理</h3>
 
+    <!-- 统计：数据源 /admin/overview + /admin/distribution -->
+    <div class="stat-row">
+      <AdminStatCard label="商品总数" :value="stats.goods_total ?? 0" sub="全部商品" />
+      <AdminStatCard
+        label="今日新增商品"
+        :value="stats.goods_today ?? 0"
+        :sub="classifySub"
+        :muted="!stats.goods_today"
+      />
+    </div>
+
+    <div class="card chart-card">
+      <span class="chart-title">商品分类分布</span>
+      <AdminChart v-if="goodsClassifies.length" :option="pieOpt" :height="240" />
+    </div>
+
     <div class="card admin-table-card">
       <table class="admin-table">
         <thead>
@@ -47,8 +63,17 @@
 import { computed, onMounted, ref } from 'vue'
 import { adminApi } from '../../api/index.js'
 import { pickErrorMessage } from '../../utils/errorMessage.js'
+import AdminStatCard from '../../components/admin/AdminStatCard.vue'
+import AdminChart from '../../components/admin/AdminChart.vue'
+import { pieOption } from '../../utils/adminCharts.js'
 
 const PAGE_SIZE = 10
+
+const stats = ref({})
+const goodsClassifies = ref([])   // [{ name, count }]
+
+const pieOpt = computed(() => pieOption(goodsClassifies.value, '件'))
+const classifySub = computed(() => `共 ${goodsClassifies.value.length} 个分类`)
 
 const goods = ref([])
 const total = ref(0)
@@ -81,7 +106,21 @@ async function load(p = page.value) {
   }
 }
 
-onMounted(() => load(1))
+// 统计失败不影响表格功能，静默降级
+async function loadStats() {
+  try {
+    const [o, d] = await Promise.all([adminApi.getOverview(), adminApi.getDistribution()])
+    if (o.code === 200) stats.value = o.data
+    if (d.code === 200) goodsClassifies.value = d.data.goods_classifies
+  } catch (e) {
+    console.warn('统计数据加载失败:', e)
+  }
+}
+
+onMounted(() => {
+  load(1)
+  loadStats()
+})
 </script>
 
 <style scoped>
@@ -91,6 +130,28 @@ onMounted(() => load(1))
 .admin-title {
   margin-bottom: 16px;
   font-size: 18px;
+}
+.stat-row {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  margin-bottom: 16px;
+}
+.chart-card {
+  padding: 16px 18px 10px;
+  margin-bottom: 16px;
+}
+.chart-title {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+@media (max-width: 900px) {
+  .stat-row {
+    grid-template-columns: 1fr;
+  }
 }
 .admin-table-card {
   overflow-x: auto;

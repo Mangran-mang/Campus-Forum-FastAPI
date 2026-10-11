@@ -2,6 +2,28 @@
   <div class="admin-page">
     <h3 class="admin-title">帖子管理</h3>
 
+    <!-- 统计：数据源 /admin/overview + /admin/trends?days=2 + /admin/distribution -->
+    <div class="stat-row">
+      <AdminStatCard label="帖子总数" :value="stats.post_total ?? 0" sub="全部帖子" />
+      <AdminStatCard
+        label="今日新增帖子"
+        :value="stats.post_today ?? 0"
+        :sub="recentSub"
+        :muted="!stats.post_today"
+      />
+    </div>
+
+    <div class="chart-row">
+      <div class="card chart-card">
+        <span class="chart-title">近 2 天新增帖子</span>
+        <AdminChart v-if="trend" :option="trendOption" :height="220" />
+      </div>
+      <div class="card chart-card">
+        <span class="chart-title">帖子板块分布</span>
+        <AdminChart v-if="postCategories.length" :option="pieOpt" :height="220" />
+      </div>
+    </div>
+
     <div class="card admin-table-card">
       <table class="admin-table">
         <thead>
@@ -57,8 +79,25 @@
 import { computed, onMounted, ref } from 'vue'
 import { adminApi } from '../../api/index.js'
 import { pickErrorMessage } from '../../utils/errorMessage.js'
+import AdminStatCard from '../../components/admin/AdminStatCard.vue'
+import AdminChart from '../../components/admin/AdminChart.vue'
+import { barOption, pieOption } from '../../utils/adminCharts.js'
 
 const PAGE_SIZE = 10
+
+const stats = ref({})
+const trend = ref(null)          // { dates: [...], posts: [...] }
+const postCategories = ref([])   // [{ name, count }]
+
+// 只取近 2 天：后台关注的是"这两天有没有人发帖"，30 天的长趋势对日常运营没意义
+const trendOption = computed(() =>
+  trend.value ? barOption(trend.value.dates, trend.value.posts, '新增帖子') : {},
+)
+const pieOpt = computed(() => pieOption(postCategories.value, '篇'))
+const recentSub = computed(() => {
+  const sum = (trend.value?.posts || []).reduce((a, b) => a + b, 0)
+  return `近 2 天共 ${sum} 篇`
+})
 
 const posts = ref([])
 const total = ref(0)
@@ -95,7 +134,26 @@ async function load(p = page.value) {
   }
 }
 
-onMounted(() => load(1))
+// 统计失败不影响表格功能，静默降级
+async function loadStats() {
+  try {
+    const [o, t, d] = await Promise.all([
+      adminApi.getOverview(),
+      adminApi.getTrends(2),
+      adminApi.getDistribution(),
+    ])
+    if (o.code === 200) stats.value = o.data
+    if (t.code === 200) trend.value = t.data
+    if (d.code === 200) postCategories.value = d.data.post_categories
+  } catch (e) {
+    console.warn('统计数据加载失败:', e)
+  }
+}
+
+onMounted(() => {
+  load(1)
+  loadStats()
+})
 </script>
 
 <style scoped>
@@ -105,6 +163,29 @@ onMounted(() => load(1))
 .admin-title {
   margin-bottom: 16px;
   font-size: 18px;
+}
+.stat-row,
+.chart-row {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  margin-bottom: 16px;
+}
+.chart-card {
+  padding: 16px 18px 10px;
+}
+.chart-title {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+@media (max-width: 900px) {
+  .stat-row,
+  .chart-row {
+    grid-template-columns: 1fr;
+  }
 }
 .admin-table-card {
   overflow-x: auto;

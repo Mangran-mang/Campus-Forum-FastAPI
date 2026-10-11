@@ -22,7 +22,6 @@ import ChatView from '../views/ChatView.vue'
 // 动态 import 让 Vite 把 /admin 相关代码单独拆 chunk，只在真正访问时才加载。
 const AdminLoginView = () => import('../views/admin/AdminLoginView.vue')
 const AdminLayout = () => import('../views/admin/AdminLayout.vue')
-const AdminDashboardView = () => import('../views/admin/AdminDashboardView.vue')
 const AdminUsersView = () => import('../views/admin/AdminUsersView.vue')
 const AdminPostsView = () => import('../views/admin/AdminPostsView.vue')
 const AdminGoodsView = () => import('../views/admin/AdminGoodsView.vue')
@@ -52,8 +51,7 @@ const routes = [
     component: AdminLayout,
     meta: { admin: true },
     children: [
-      { path: '', redirect: '/admin/dashboard' },
-      { path: 'dashboard', name: 'AdminDashboard', component: AdminDashboardView },
+      { path: '', redirect: '/admin/users' },
       { path: 'users', name: 'AdminUsers', component: AdminUsersView },
       { path: 'posts', name: 'AdminPosts', component: AdminPostsView },
       { path: 'goods', name: 'AdminGoods', component: AdminGoodsView },
