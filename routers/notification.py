@@ -5,6 +5,7 @@ from config.database_config import get_database
 from crud.notification import NotificationService
 from schemas.common import Envelope
 from schemas.notification import (
+    ClearReadOut,
     NotificationCreateModel,
     NotificationOut,
     NotificationPageOut,
@@ -69,6 +70,26 @@ async def mark_all_as_read(
     """标记所有通知为已读"""
     await notification_service.crud_mark_all_as_read(db, user_details["user"]["user_uid"])
     return success_response(message="全部标记已读")
+
+
+@router.post("/clear_read", response_model=Envelope[ClearReadOut])
+async def clear_read_notifications(
+        db: AsyncSession = Depends(get_database),
+        user_details=Depends(access_token_bearer),
+):
+    """
+    清空自己的**已读**通知（未读一条不动）
+
+    ## 为什么用 POST 而不是 DELETE
+    与同组的 `/read_all` 保持一致 —— 这个路由组里"改变通知状态"的动作都走 POST。
+    REST 上 DELETE 更贴切，但一致性比纯度重要（前端和后来者只看这一组就能摸清规律）。
+
+    ## 为什么不做"清空全部"
+    见 crud_clear_read 的注释：未读是用户还没看到的信息，替他删掉会有
+    "我明明收到过通知"的困惑。要清未读，先标记已读即可。
+    """
+    deleted = await notification_service.crud_clear_read(db, user_details["user"]["user_uid"])
+    return success_response(data={"deleted": deleted}, message=f"已清理 {deleted} 条已读通知")
 
 
 @router.post("/send", response_model=Envelope[NotificationOut])

@@ -78,6 +78,18 @@
             重新上架
           </button>
         </div>
+
+        <!-- 买家视角：预定购买。平台不接支付，点完就是"通知卖家 + 进私信聊" -->
+        <div class="goods-actions" v-else-if="isLoggedIn">
+          <button
+            class="btn-primary btn-sm"
+            :disabled="reserving || goods.status !== '在售'"
+            @click="handleReserve"
+          >
+            {{ goods.status === '在售' ? (reserving ? '处理中...' : '预定购买') : '商品已售出' }}
+          </button>
+          <span class="reserve-hint">平台不代收款项，请当面验货交易</span>
+        </div>
       </div>
     </article>
 
@@ -168,6 +180,7 @@ const isAuthor = computed(() =>
   currentUser.value?.uid === goods.value?.author_uid || currentUser.value?.is_superuser
 )
 const isLoggedIn = ref(!!localStorage.getItem('access_token'))
+const reserving = ref(false) // 预定请求进行中：防连点（后端虽然幂等，但没必要发两次）
 const lightbox = ref(null)
 
 // 图片
@@ -267,6 +280,37 @@ async function toggleStatus() {
     goods.value.status = newStatus
   } catch {
     pageError.value = '修改商品状态失败，请检查网络后重试'
+  }
+}
+
+// 买家「预定购买」：通知卖家 + 进私信会话（平台不接支付，成交靠双方线下谈）
+async function handleReserve() {
+  if (reserving.value || goods.value.status !== '在售') return
+
+  // ## 这句确认是产品底线，不是走过场
+  // 平台不担保、不收款 —— 用户必须在点之前就知道，否则事后容易产生
+  // "我以为平台会把关"的纠纷预期。文案与按钮旁的常驻提示保持一致。
+  const ok = window.confirm(
+    '平台仅提供沟通渠道，不代收款项。\n\n' +
+      '点击确定后将通知卖家，并进入你们的私信会话。\n' +
+      '请务必当面验货、当面交易。',
+  )
+  if (!ok) return
+
+  reserving.value = true
+  pageError.value = ''
+  try {
+    const res = await goodsApi.reserve(goods.value.gid)
+    if (res.code === 200) {
+      // 已预定过也返回同一个会话，直接进去继续聊（不需要区分处理）
+      router.push(`/messages/${res.data.conversation_id}`)
+    } else {
+      pageError.value = pickErrorMessage(res, '预定失败，请稍后重试')
+    }
+  } catch {
+    pageError.value = '网络错误，请稍后重试'
+  } finally {
+    reserving.value = false
   }
 }
 
@@ -497,6 +541,12 @@ onMounted(() => {
   gap: 8px;
   border-top: 1px solid var(--border);
   padding-top: 16px;
+}
+/* 常驻在预定按钮旁的免责提示：与点击时的确认弹窗是同一件事的两次告知 */
+.reserve-hint {
+  align-self: center;
+  font-size: 12px;
+  color: var(--text-muted);
 }
 .comment-item {
   margin-bottom: 12px;

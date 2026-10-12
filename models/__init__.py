@@ -10,6 +10,7 @@ from .model_notification import Notification
 from .model_goods import Goods
 from .model_goods_classify import GoodsClassify
 from .model_goods_comment import GoodsComment
+from .model_goods_reservation import GoodsReservation
 from .model_image import Image
 from .model_level_config import LevelConfig
 from .model_conversation import Conversation

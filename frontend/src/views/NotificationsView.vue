@@ -2,7 +2,10 @@
   <div>
     <div class="flex-between mb-16">
       <h2 style="font-size:20px">通知</h2>
-      <button class="btn-outline btn-sm" @click="markAllRead" v-if="hasUnread">全部标记已读</button>
+      <div style="display:flex;gap:8px">
+        <button class="btn-outline btn-sm" @click="clearRead" v-if="hasRead">清空已读</button>
+        <button class="btn-outline btn-sm" @click="markAllRead" v-if="hasUnread">全部标记已读</button>
+      </div>
     </div>
 
     <div v-if="loading" class="skeleton-list">
@@ -41,9 +44,9 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { notificationApi } from '../api/index.js'
+import { notificationApi, messageApi } from '../api/index.js'
 
 const router = useRouter()
 const notifications = ref([])
@@ -51,9 +54,11 @@ const loading = ref(true)
 const page = ref(1)
 const hasMore = ref(false)
 const hasUnread = ref(false)
+// 有已读通知时才显示"清空已读"按钮（与 hasUnread 对称：没得清就别摆按钮）
+const hasRead = computed(() => notifications.value.some((n) => n.is_read))
 
 function notifTypeLabel(type) {
-  const map = { reply: '回复', like: '点赞', system: '系统通知', report: '举报' }
+  const map = { reply: '回复', like: '点赞', system: '系统通知', report: '举报', goods_reserve: '商品预定' }
   return map[type] || type
 }
 
@@ -86,6 +91,26 @@ async function markAllRead() {
   } catch {}
 }
 
+// 清空已读通知（未读的保留）
+async function clearRead() {
+  // 删除不可撤销，必须先确认；文案里说清"未读会保留"，避免用户以为要清空全部
+  const ok = window.confirm(
+    '清空所有已读通知？\n\n未读的通知会保留；已读的清掉后无法恢复。',
+  )
+  if (!ok) return
+  try {
+    const res = await notificationApi.clearRead()
+    if (res.code === 200) {
+      // 用服务端返回的条数（message 里带着），比笼统的"成功"更能确认做了什么
+      window.alert(res.message || '已清理')
+      await loadNotifs(1)
+      window.dispatchEvent(new Event('auth-change'))
+    }
+  } catch (e) {
+    console.warn('清空已读失败:', e)
+  }
+}
+
 async function handleClick(notif) {
   if (!notif.is_read) {
     await notificationApi.markRead(notif.id)
@@ -94,6 +119,19 @@ async function handleClick(notif) {
   }
   if (notif.post_id) {
     router.push(`/posts/${notif.post_id}`)
+    return
+  }
+  // 商品预定通知：直接进与买家的会话
+  // ## 为什么前端要再调一次建会话接口，而不是让通知带 conversation_id
+  // 会话是"两个人一条记录"，与商品无关（uq_conversation_pair 决定的一对唯一）。
+  // 卖家点通知的真实意图是"去找买家聊"，get_or_create 幂等，拿到的必然是同一个会话。
+  if (notif.goods_id && notif.sender_uid) {
+    try {
+      const res = await messageApi.getOrCreateConversation(notif.sender_uid)
+      if (res.code === 200) router.push(`/messages/${res.data.id}`)
+    } catch (e) {
+      console.warn('进入会话失败:', e)
+    }
   }
 }
 

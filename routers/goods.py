@@ -6,7 +6,7 @@ from crud.goods import GoodsService
 from models import Goods
 from models.model_user import User
 from schemas.common import Envelope
-from schemas.goods import GoodsCreatePyModel, GoodsUpdatePyModel, GoodsOutModel
+from schemas.goods import GoodsCreatePyModel, GoodsUpdatePyModel, GoodsOutModel, GoodsReserveOut
 from tools.dependencies import AccessTokenBearer, get_user_by_token
 from tools.exceptions import success_response
 
@@ -52,6 +52,34 @@ async def get_goods_by_gid(
         raise HTTPException(
             status_code=404, detail='商品不存在', )
     return success_response(data=result, message="获取成功")
+
+
+# ## 路径顺序：更具体的写在前面
+# `/{gid}/reserve` 与 `/{gid}` 在路径参数上会打架，FastAPI 按注册顺序匹配 ——
+# 把长的放前面更稳妥（虽然这里方法不同不冲突，但顺序依赖少一点是一点）。
+@router.post('/{gid}/reserve', response_model=Envelope[GoodsReserveOut])
+async def reserve_goods(
+        gid: str,
+        db: AsyncSession = Depends(get_database, ),
+        user_details=Depends(access_token_bearer), ):
+    """
+    预定商品：记录意向 + 通知卖家 + 建/取会话
+
+    幂等 —— 重复点击返回同一条预定记录，不会重复通知卖家。
+    返回的 conversation_id 让前端直接跳进会话（平台不接支付，成交靠线下沟通）。
+    """
+    buyer_uid = user_details["user"]["user_uid"]
+    reservation, conversation_id, already = await service.reserve_goods(db, gid, buyer_uid)
+    return success_response(
+        data=GoodsReserveOut(
+            reservation_id=reservation.id,
+            status=reservation.status,
+            created_time=reservation.created_time,
+            conversation_id=conversation_id,
+            already_reserved=already,
+        ),
+        message="已通知卖家，去私信里聊聊吧" if not already else "你已经预定过了，去私信里继续聊",
+    )
 
 
 @router.put('/{gid}', response_model=Envelope[GoodsOutModel])

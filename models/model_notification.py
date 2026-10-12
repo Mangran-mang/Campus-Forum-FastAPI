@@ -35,6 +35,14 @@ class Notification(Base):
     post_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("posts.id", ondelete="CASCADE"), nullable=True, default=None, comment="相关帖子id"
     )
+    # ## 为什么单独加一列而不是复用 post_id
+    # "有人想买你的商品"这类通知要能定位到具体商品（点通知跳会话/商品页）。
+    # 复用 post_id 存 goods.gid 会让同一列有两种语义，将来查"这条通知是关于帖子的吗"无解。
+    # 注意类型是 String(36) 而不是 Integer —— goods 的主键 gid 是 UUID 字符串，
+    # 这个项目的主键有三种形态（user.uid / posts.id / goods.gid），外键两端类型必须严格一致。
+    goods_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("goods.gid", ondelete="CASCADE"), nullable=True, default=None, comment="相关商品id"
+    )
     content: Mapped[str] = mapped_column(Text, nullable=True, default="", comment="通知内容")
     is_read: Mapped[bool] = mapped_column(Boolean, default=False, comment="是否已读")
     read_time: Mapped[datetime] = mapped_column(

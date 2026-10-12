@@ -169,6 +169,9 @@ export const goodsApi = {
   create: (data) => request('/goods/add_goods', { method: 'POST', body: JSON.stringify(data) }),
   update: (gid, data) => request(`/goods/${gid}`, { method: 'PUT', body: JSON.stringify(data) }),
   delete: (gid) => request(`/goods/${gid}`, { method: 'DELETE' }),
+  // 预定商品：幂等（重复点返回同一条记录，不会重复通知卖家）
+  // 返回 {reservation_id, status, created_time, conversation_id, already_reserved}
+  reserve: (gid) => request(`/goods/${gid}/reserve`, { method: 'POST' }),
 }
 
 // ============== 商品分类相关 ==============
@@ -316,6 +319,8 @@ export const notificationApi = {
   getUnreadCount: () => request('/notifications/unread_count'),
   markRead: (id) => request(`/notifications/read/${id}`, { method: 'POST' }),
   markAllRead: () => request('/notifications/read_all', { method: 'POST' }),
+  // 清空已读通知（未读不受影响）。返回 {deleted} —— 给具体条数便于反馈
+  clearRead: () => request('/notifications/clear_read', { method: 'POST' }),
 }
 
 // ============== 私信相关 ==============

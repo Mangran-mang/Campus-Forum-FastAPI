@@ -38,6 +38,10 @@ class NotificationOut(BaseModel):
     sender_uid: Optional[str] = None
     notif_type: str
     post_id: Optional[int] = None
+    # ## 为什么要有这一行
+    # 商品类通知（如 goods_reserve）靠它定位商品/会话。**模型上加了字段不等于能出网** ——
+    # response_model 是输出白名单，这里漏声明，前端拿到的就是 undefined（静默丢失，不报错）。
+    goods_id: Optional[str] = None
     content: Optional[str] = None
     is_read: bool
     read_time: Optional[datetime] = None
@@ -64,3 +68,12 @@ class NotificationPageOut(BaseModel):
 class UnreadCountOut(BaseModel):
     """未读数的 data 形状：{unread_count}"""
     unread_count: int
+
+
+class ClearReadOut(BaseModel):
+    """清空已读的 data 形状：{deleted}
+
+    给具体条数而不是笼统的"成功" —— 二次确认后的反馈要能让用户确认
+    这次操作到底做了什么（真清了 3 条，还是一条都没有）。
+    """
+    deleted: int

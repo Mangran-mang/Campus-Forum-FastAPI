@@ -57,3 +57,20 @@ class GoodsOutModel(BaseModel):
     author_uid: str
     classify_rel: GoodsClassifyOut
     author: UserBriefOut
+
+
+class GoodsReserveOut(BaseModel):
+    """
+    预定接口的返回：预定记录 + 目标会话 id
+
+    ## 为什么把 conversation_id 一起返回
+    买家点"预定购买"的**真实意图是找卖家聊**（平台不接支付，成交靠线下）。
+    前端拿到它就能直接跳进会话，不用再调一次"获取或创建会话"的接口。
+    """
+    reservation_id: int
+    status: str
+    created_time: datetime
+    conversation_id: int
+    # true = 之前就预定过（前端提示"你已经预定过了，去私信里继续聊"）
+    # 由后端判断，而不是让前端自己比对列表 —— 重复点击的判定标准只应有一处
+    already_reserved: bool

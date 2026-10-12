@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import select, update
+from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql.functions import func
 
@@ -91,3 +91,25 @@ class NotificationService:
         )
         result = await db.execute(stmt)
         return result.scalar_one_or_none() or 0
+
+    async def crud_clear_read(self, db: AsyncSession, user_uid: str) -> int:
+        """
+        清空自己的已读通知，返回实际删除的条数
+
+        ## 为什么只清"已读"，不做"清空全部"
+        未读是用户还没看到的信息，替他删掉等于替他丢弃 —— 而"清空全部"最容易
+        造成"我明明收到过通知"的困惑。把边界画在 is_read 上：用户删掉的每一条
+        都是他自己看过、决定不要的。要清未读，让他先标记已读（已有那个功能）。
+
+        ## 为什么返回条数而不是 True
+        前端要提示"已清理 N 条"。二次确认之后的反馈给出具体数字，用户才能确认
+        这次操作真的做了什么（真删了 3 条 vs 一条都没有）。
+        """
+        stmt = delete(Notification).where(
+            Notification.recipient_uid == user_uid,
+            Notification.is_read == True,
+        )
+        result = await db.execute(stmt)
+        await db.commit()
+        # rowcount 是本次 DELETE 实际影响的行数
+        return result.rowcount or 0
