@@ -45,7 +45,7 @@ def register_middleware(app: FastAPI):
         # 只解 JWT 不查库（HMAC 验签，微秒级），任何异常静默跳过。
         try:
             auth = request.headers.get("Authorization", "")
-            if auth.startswith("Bearer "):
+            if auth.startswith("Bearer "):# startwith检查字符串是否是以指定子字符串开头
                 token_data = decode_token(auth[7:])
                 if token_data:
                     await mark_daily_active(token_data["user"]["user_uid"])
