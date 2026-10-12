@@ -34,13 +34,8 @@ class Goods(Base):
         DateTime,
         index=True,
         default=datetime.now,
-        # ## 为什么不加 onupdate（沿用 posts 的实测结论，见 model_posts.py）
-        # onupdate 的语义是「该行发生任何 UPDATE 就触发」，而不是「只有编辑才触发」。
-        # 目前 goods 的写路径只有「编辑」一条，看着没问题；但一旦将来加了
-        # 「浏览量 +1」「库存 -1」「售出后改状态」这类自动更新，
-        # 时间就会被无声刷新成「最后被访问时间」—— 帖子那边已经踩过这个坑。
-        # 所以编辑时间由 crud 的 update_goods 显式赋值维护。
-        comment="最后编辑时间（业务代码手动赋值，不用 onupdate）"
+        onupdate=datetime.now,
+        comment="更新时间"
     )
 
     classify_rel: Mapped["GoodsClassify"] = relationship(

@@ -1,5 +1,3 @@
-from datetime import datetime
-
 from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -95,14 +93,6 @@ class GoodsService:
 
         for field, value in update_data.items():
             setattr(orm_goods, field, value)
-
-        # ## 编辑时间必须在这里手动写一次
-        # 模型上刻意不设 onupdate（见 model_goods.update_time 的注释）：
-        # 那样任何 UPDATE 都会刷新它，将来加「浏览量+1」之类自动更新时就变成
-        # 「最后被访问时间」。代价是——编辑路径必须自己记时间，
-        # 漏了这句 update_time 就永远不变（比被污染更隐蔽，所以放在最显眼处）。
-        orm_goods.update_time = datetime.now()
-
         await db.commit()
         await db.refresh(orm_goods, ["classify_rel", "author"])
         return orm_goods
