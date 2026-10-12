@@ -172,6 +172,10 @@ export const goodsApi = {
   // 预定商品：幂等（重复点返回同一条记录，不会重复通知卖家）
   // 返回 {reservation_id, status, created_time, conversation_id, already_reserved}
   reserve: (gid) => request(`/goods/${gid}/reserve`, { method: 'POST' }),
+  // 某商品的预定列表（只有商品作者 / 管理员能看，其他人 403）
+  getReservations: (gid) => request(`/goods/${gid}/reservations`),
+  // 确认成交：商品置"已售出"，其余预定自动取消并通知他们
+  completeReservation: (rid) => request(`/goods/reservations/${rid}/complete`, { method: 'POST' }),
 }
 
 // ============== 商品分类相关 ==============

@@ -90,6 +90,34 @@
           </button>
           <span class="reserve-hint">平台不代收款项，请当面验货交易</span>
         </div>
+        <!-- 作者视角：预定列表（谁想买我的东西）——接口只对作者/管理员开放 -->
+        <div v-if="isAuthor && reservations.length" class="reserve-panel">
+          <div class="reserve-panel-head">
+            <span>
+              已有 <strong>{{ pendingCount }}</strong> 人预定
+              <span v-if="completedCount" class="reserve-done">· 已成交 {{ completedCount }}</span>
+            </span>
+            <button class="btn-outline btn-sm" @click="showReservations = !showReservations">
+              {{ showReservations ? '收起' : '查看' }}
+            </button>
+          </div>
+
+          <div v-if="showReservations" class="reserve-list">
+            <div v-for="r in reservations" :key="r.id" class="reserve-item">
+              <span class="reserve-buyer">
+                {{ r.buyer?.nickname || r.buyer?.username || r.buyer?.uid?.slice(0, 8) || '匿名' }}
+              </span>
+              <span class="reserve-status" :class="`rs-${r.status}`">
+                {{ STATUS_LABEL[r.status] || r.status }}
+              </span>
+              <span class="reserve-time">{{ formatTime(r.created_time) }}</span>
+              <div class="reserve-actions" v-if="r.status === 'pending'">
+                <button class="btn-primary btn-sm" @click="handleComplete(r)">确认成交</button>
+                <button class="btn-outline btn-sm" @click="gotoChat(r.buyer?.uid)">去私信</button>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </article>
 
@@ -166,7 +194,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { goodsApi, goodsCommentApi, imageApi } from '../api/index.js'
+import { goodsApi, goodsCommentApi, messageApi, imageApi } from '../api/index.js'
 import { pickErrorMessage } from '../utils/errorMessage.js'
 
 const route = useRoute()
@@ -314,6 +342,57 @@ async function handleReserve() {
   }
 }
 
+// ============ 预定列表（作者视角）============
+const reservations = ref([])
+const showReservations = ref(false)
+const STATUS_LABEL = { pending: '预定中', completed: '已成交', cancelled: '已取消' }
+const pendingCount = computed(() => reservations.value.filter((r) => r.status === 'pending').length)
+const completedCount = computed(() => reservations.value.filter((r) => r.status === 'completed').length)
+
+// 只有商品作者或管理员能看这个列表（其他人会 403），所以只在 isAuthor 时调用
+async function loadReservations() {
+  try {
+    const res = await goodsApi.getReservations(gid.value)
+    if (res.code === 200) reservations.value = res.data || []
+  } catch (e) {
+    console.warn('加载预定列表失败:', e)
+  }
+}
+
+// 确认成交：商品转"已售出"，其余还在等的人自动取消并收到通知
+async function handleComplete(r) {
+  const who = r.buyer?.nickname || r.buyer?.username || '该用户'
+  const ok = window.confirm(
+    `确认把商品卖给「${who}」？\n\n` +
+      '商品会标记为已售出；其他还在等的人会自动取消并收到通知。\n' +
+      '此操作不可撤销。',
+  )
+  if (!ok) return
+  try {
+    const res = await goodsApi.completeReservation(r.id)
+    if (res.code === 200) {
+      window.alert('已确认成交')
+      await loadGoods() // 商品状态与"已有 N 人预定"都会变
+      await loadReservations()
+    } else {
+      pageError.value = pickErrorMessage(res, '确认成交失败')
+    }
+  } catch {
+    pageError.value = '网络错误，请稍后重试'
+  }
+}
+
+// 去私信：复用"按 uid 建/取会话"的接口（和预定成功时走的是同一条路）
+async function gotoChat(uid) {
+  if (!uid) return
+  try {
+    const res = await messageApi.getOrCreateConversation(uid)
+    if (res.code === 200) router.push(`/messages/${res.data.id}`)
+  } catch (e) {
+    console.warn('进入会话失败:', e)
+  }
+}
+
 // 评论相关
 async function loadComments(page = 1) {
   commentPage.value = page
@@ -394,10 +473,12 @@ async function loadImages() {
   }
 }
 
-onMounted(() => {
-  loadGoods()
+onMounted(async () => {
+  await loadGoods()
   loadComments()
   loadImages()
+  // 作者（含管理员）才需要看"谁想买"——其他人调用只会拿到 403，没必要白跑
+  if (isAuthor.value) loadReservations()
 })
 </script>
 
@@ -547,6 +628,66 @@ onMounted(() => {
   align-self: center;
   font-size: 12px;
   color: var(--text-muted);
+}
+/* ===== 作者视角的预定列表 ===== */
+.reserve-panel {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+.reserve-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+.reserve-done {
+  color: var(--text-muted);
+}
+.reserve-list {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.reserve-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 13px;
+}
+.reserve-buyer {
+  font-weight: 500;
+}
+.reserve-status {
+  padding: 1px 8px;
+  border-radius: 10px;
+  font-size: 12px;
+}
+.rs-pending {
+  color: var(--warning);
+  background: rgba(255, 184, 107, 0.12);
+}
+.rs-completed {
+  color: var(--success);
+  background: rgba(61, 220, 151, 0.12);
+}
+.rs-cancelled {
+  color: var(--text-muted);
+  background: rgba(150, 150, 150, 0.12);
+}
+.reserve-time {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.reserve-actions {
+  margin-left: auto;
+  display: flex;
+  gap: 6px;
 }
 .comment-item {
   margin-bottom: 12px;

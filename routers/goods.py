@@ -6,7 +6,14 @@ from crud.goods import GoodsService
 from models import Goods
 from models.model_user import User
 from schemas.common import Envelope
-from schemas.goods import GoodsCreatePyModel, GoodsUpdatePyModel, GoodsOutModel, GoodsReserveOut
+from schemas.goods import (
+    GoodsCreatePyModel,
+    GoodsDetailOut,
+    GoodsOutModel,
+    GoodsReserveOut,
+    GoodsUpdatePyModel,
+    ReservationItemOut,
+)
 from tools.dependencies import AccessTokenBearer, get_user_by_token
 from tools.exceptions import success_response
 
@@ -43,7 +50,7 @@ async def get_all_goods(
     return success_response(data=goods_list, message="获取成功")
 
 
-@router.get('/get_goods/{gid}', response_model=Envelope[GoodsOutModel])
+@router.get('/get_goods/{gid}', response_model=Envelope[GoodsDetailOut])
 async def get_goods_by_gid(
         gid: str, db: AsyncSession = Depends(get_database, ), ):
     result = await service.get_goods(
@@ -80,6 +87,38 @@ async def reserve_goods(
         ),
         message="已通知卖家，去私信里聊聊吧" if not already else "你已经预定过了，去私信里继续聊",
     )
+
+
+@router.get('/{gid}/reservations', response_model=Envelope[list[ReservationItemOut]])
+async def get_goods_reservations(
+        gid: str,
+        db: AsyncSession = Depends(get_database, ),
+        user_details=Depends(access_token_bearer), ):
+    """
+    查看某商品的预定列表（谁想买我的东西）
+
+    只有商品作者或超级管理员能看 —— 买家的购买意向不属于公开信息，
+    不能让任何人拿着 gid 就查出来。
+    """
+    orm_user: User = await get_user_by_token(token_details=user_details, db=db)
+    rows = await service.get_reservations(db, gid, orm_user)
+    return success_response(data=rows, message="获取成功")
+
+
+@router.post('/reservations/{rid}/complete', response_model=Envelope[ReservationItemOut])
+async def complete_reservation(
+        rid: int,
+        db: AsyncSession = Depends(get_database, ),
+        user_details=Depends(access_token_bearer), ):
+    """
+    确认成交（只有商品作者）
+
+    一次做完三件事：该预定转 completed、商品置为"已售出"、其余还在等的人转 cancelled
+    并收到通知。分三次提交会留下不自洽的中间状态，所以必须同一个事务。
+    """
+    orm_user: User = await get_user_by_token(token_details=user_details, db=db)
+    reservation = await service.complete_reservation(db, rid, orm_user)
+    return success_response(data=reservation, message="已确认成交，商品已标记为已售出")
 
 
 @router.put('/{gid}', response_model=Envelope[GoodsOutModel])

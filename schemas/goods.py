@@ -59,6 +59,33 @@ class GoodsOutModel(BaseModel):
     author: UserBriefOut
 
 
+class GoodsDetailOut(GoodsOutModel):
+    """
+    商品详情输出 = 列表字段 + 详情专属字段
+
+    ## 为什么单独一个模型，而不是给 GoodsOutModel 加个默认 0 的字段
+    reserve_count（"已有 N 人预定"）只有详情页要显示，列表接口不会为它跑那个聚合。
+    如果把它挂在共用的 GoodsOutModel 上，列表返回的会是"看起来像真数据的 0"——
+    那比缺字段更糟：前端会当真值用，而不是显示 undefined。
+    字段的"有没有算"要能从类型上看出来，所以用一个子类把它划出来。
+    """
+    reserve_count: int = 0
+
+
+class ReservationItemOut(BaseModel):
+    """预定列表项（卖家视角：谁想买我的东西）"""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    gid: str
+    status: str
+    created_time: datetime
+    updated_time: datetime
+    # 只给 UserBriefOut（uid/nickname/level）—— 刻意不给联系方式：
+    # 平台不接支付、不担保，就别顺手把用户的手机号之类也暴露出去。要聊走私信。
+    buyer: UserBriefOut
+
+
 class GoodsReserveOut(BaseModel):
     """
     预定接口的返回：预定记录 + 目标会话 id

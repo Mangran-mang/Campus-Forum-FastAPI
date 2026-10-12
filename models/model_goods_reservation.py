@@ -8,7 +8,7 @@ from sqlalchemy import (
     String,
     UniqueConstraint,
 )
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from models.model_base import Base
 
@@ -67,3 +67,9 @@ class GoodsReservation(Base):
         # 由业务代码显式赋值（同 model_posts.updated_time 的结论，见那边注释）
         comment="状态变更时间（业务代码手动赋值，不用 onupdate）",
     )
+
+    # 关系映射
+    # 只挂 buyer：预定列表要显示买家昵称（UserBriefOut）。
+    # seller 目前只用于筛选（WHERE seller_uid = ?），不需要 seller 对象 → 不挂关系，
+    # 省掉一次没必要的加载。等真要用到 seller 对象时再加（那时别忘了 selectinload）。
+    buyer: Mapped["User"] = relationship("User", foreign_keys=[buyer_uid])

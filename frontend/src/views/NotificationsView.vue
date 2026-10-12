@@ -58,7 +58,14 @@ const hasUnread = ref(false)
 const hasRead = computed(() => notifications.value.some((n) => n.is_read))
 
 function notifTypeLabel(type) {
-  const map = { reply: '回复', like: '点赞', system: '系统通知', report: '举报', goods_reserve: '商品预定' }
+  const map = {
+    reply: '回复',
+    like: '点赞',
+    system: '系统通知',
+    report: '举报',
+    goods_reserve: '商品预定',
+    goods_sold: '商品已售出',
+  }
   return map[type] || type
 }
 
