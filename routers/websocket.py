@@ -4,12 +4,13 @@ from starlette.websockets import WebSocket, WebSocketDisconnect
 from config.database_config import AsyncSessionLocal
 from config.redis_config import is_jti_in_blocklist
 from crud.message import MessageService
-from tools.connection import ConnectionManager
+from tools.connection import connect_manager
 from tools.security import decode_token
 
 router = APIRouter(prefix="/ws",tags=["用户私信"])
 
-connect_manager = ConnectionManager()
+# 为了防止后续导入忘记，所以直接在connection模块给实例化了
+# connect_manager = ConnectionManager()
 message = MessageService()
 
 async def authenticate_ws_token(token: str) -> dict | None:
@@ -51,12 +52,14 @@ async def chat(websocket: WebSocket, conv_id: int):
     # 循环收发
     try:
         while True:
-            text = await websocket.receive_text()      # 收
+            text = await websocket.receive_text()      # 收客户端发来的消息
             async with AsyncSessionLocal() as db:
                 await message.crud_add_message(db, conv_id, current_uid, text)         # 落库
             # 信号同时推给双方：对方立即刷新，自己也能看到刚发的消息
-            await connect_manager.send_to_user(other_uid, text)
-            await connect_manager.send_to_user(current_uid, text)
+            # await connect_manager.send_to_user(other_uid, text)
+            # await connect_manager.send_to_user(current_uid, text)
+            await connect_manager.broadcast_to_user(other_uid, text)
+            await connect_manager.broadcast_to_user(current_uid, text)
     except WebSocketDisconnect:
         pass
         # 下面原本是AI写的,只在捕获到异常时调用disconnect,后果相当严重

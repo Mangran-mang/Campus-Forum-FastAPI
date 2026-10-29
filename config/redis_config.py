@@ -1,7 +1,9 @@
+
 from redis.asyncio import Redis
 from config.config import Config
 from datetime import date
 import logging
+
 
 logger = logging.getLogger(__name__)
 
@@ -9,7 +11,8 @@ JTI_EXPIRY = 3600# 到期时间默认常量
 
 DAILY_ACTIVE_TTL = 172800 # 48*60*60 两天的秒数
 
-# 创建一个Redis客户端连接实例
+
+# 连接参数字典
 redis_kwargs = dict(
     host=Config.REDIS_HOST,
     port=Config.REDIS_PORT,
@@ -18,8 +21,11 @@ redis_kwargs = dict(
 )
 if Config.REDIS_PASSWORD:
     redis_kwargs["password"] = Config.REDIS_PASSWORD
-
+# 创建一个Redis客户端连接实例，这里创建的是存黑名单的实例
 token_blocklist = Redis(**redis_kwargs)
+# redis客户端别名，实际上和黑名单客户端是同一个，但为了方便区分作用，所以改名了
+redis_client = token_blocklist
+
 
 async def add_jti_to_blocklist(jti: str,expiry:int=JTI_EXPIRY):
     """
@@ -79,3 +85,4 @@ async def get_daily_active_count(day: date) -> int:
     except Exception as e:
         logger.warning("读取日活失败: %s", e)
         return 0
+

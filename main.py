@@ -1,5 +1,8 @@
+import asyncio
 import logging
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
+
+from tools.connection import connect_manager
 
 logger = logging.getLogger(__name__)
 from fastapi import FastAPI
@@ -48,10 +51,17 @@ setup_logging()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # print("项目已完全启动")
+    # 这里究竟在做什么
+    task = asyncio.create_task(connect_manager.ws_subscriber_loop())
     logger.info("项目已完全启动")
     # await init_db()
     yield
+    task.cancel()
+    # suppress是什么
+    with suppress(asyncio.CancelledError,Exception):
+        await task
+
+
 
 
 app = FastAPI(lifespan=lifespan)
