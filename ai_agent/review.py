@@ -7,7 +7,7 @@ from config.config import Config
 
 # temperature=0 保证审核判定严谨
 review_model = init_chat_model(
-    model="qwen3.5-flash",
+    model="qwen3.8-flash",
     model_provider="openai",
     api_key=Config.API_KEY,
     base_url="https://dashscope.aliyuncs.com/compatible-mode/v1",

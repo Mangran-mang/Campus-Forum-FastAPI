@@ -27,6 +27,9 @@ class GoodsService:
         return result.scalars().all()
 
     async def get_goods(self, db:AsyncSession,gid:str):
+        """
+        返回指定商品信息以及预定情况
+        """
         # ## reserve_count 是"相关子查询"而不是 join 聚合
         # 详情页要显示"已有 N 人预定"（只算 pending）。用标量子查询：
         # 不会像 join + group by 那样复制行，也不需要额外的分组处理。
@@ -44,7 +47,7 @@ class GoodsService:
             .scalar_subquery()
         )
 
-        #
+        # 拿到指定商品的信息和预定人数
         stmt = select(Goods, reserve_count_subq).options(
             selectinload(Goods.classify_rel),
             selectinload(Goods.author),

@@ -6,6 +6,27 @@
       <!-- 在这里添加新的公告条目，最新的放在最上面 -->
       <!-- 格式：复制一条 .announce-item，修改日期和内容 -->
       <div class="announce-item card">
+      <div class="announce-date">2026-10-29</div>
+        <h3>校园墙业务更新</h3>
+        <p>郑财校园墙1.88拓展</p>
+        <ul>
+          <li> 修复了用户过多情况下私信功能出错的问题</li>
+        </ul>
+        <p>如有问题反馈至3511687086@qq.com</p>
+      </div>
+
+      <div class="announce-item card">
+      <div class="announce-date">2026-10-12</div>
+        <h3>校园墙业务更新</h3>
+        <p>郑财校园墙1.85拓展</p>
+        <ul>
+          <li> 后台系统全方位优化</li>
+          <li> 二手交易模块全方位优化</li>
+        </ul>
+        <p>如有问题反馈至3511687086@qq.com</p>
+      </div>
+
+      <div class="announce-item card">
       <div class="announce-date">2026-10-10</div>
         <h3>校园墙业务更新</h3>
         <p>郑财校园墙1.83拓展</p>

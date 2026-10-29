@@ -239,10 +239,14 @@ async def login_user(
             # ============将刷新令牌添加到数据库=============
             # 双重保障，这里检测以此，在crud函数中再检测一次，好吧有点没必要但我懒得改了
             orm_token = await token_service.crud_get_token_by_user_uid(db, user.uid)
-            if orm_token is None:
-                await token_service.crud_add_token(db, refresh_token, refresh_token_details)
-            else:
-                await token_service.crud_update_token(db, refresh_token, refresh_token_details)
+            try:
+                if orm_token is None:
+                    await token_service.crud_add_token(db, refresh_token, refresh_token_details)
+                else:
+                    await token_service.crud_update_token(db, refresh_token, refresh_token_details)
+            # 处理一个账号没有refresh_token时,多标签页同时登录想要插入token的情况
+            except Exception as e:
+                raise await token_service.crud_update_token(db, refresh_token, refresh_token_details)
             # =========================================
 
             # 注意：access_token / refresh_token / user 全部放进 data，

@@ -46,10 +46,6 @@ class GoodsReservation(Base):
     buyer_uid: Mapped[str] = mapped_column(
         String(36), ForeignKey("user.uid", ondelete="CASCADE"), nullable=False, comment="买家uid"
     )
-    # ## 为什么把卖家冗余一份
-    # gid → seller 这条关系**永不变**（商品不能换主人），所以冗余是安全的；
-    # 换来的是卖家列表查询（WHERE seller_uid = ?）不用 join 商品表。
-    # 注意：这类冗余只在"源关系不可变"时才成立，可变字段的冗余要另行处理同步。
     seller_uid: Mapped[str] = mapped_column(
         String(36), ForeignKey("user.uid", ondelete="CASCADE"), nullable=False, comment="卖家uid（自商品冗余）"
     )

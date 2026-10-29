@@ -79,3 +79,5 @@ class AdminDistributionOut(BaseModel):
 class AdminActivityOut(BaseModel):
     dates: list[str]
     uv: list[int]
+class AdminAIOut(BaseModel):
+    dates:list[str]

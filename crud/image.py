@@ -149,7 +149,7 @@ class ImageService:
             raise HTTPException(status_code=400, detail="图片原始大小不能超过 2MB")
 
         #每次读 1MB，边读边累计，超限立刻停
-        content = b""
+        content = b"" # 类型匹配的累加器初始值,让他变成bytes也就是二进制
         while True:
             chunk = await file.read(1024 * 1024)  # 每次读 1MB
             if not chunk:

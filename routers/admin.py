@@ -17,6 +17,7 @@ from schemas.admin import (
     AdminDistributionOut,
     DistItemOut,
     AdminActivityOut,
+    AdminAIOut,
 )
 from schemas.common import Envelope
 from schemas.goods import GoodsOutModel
@@ -29,6 +30,8 @@ from schemas.user import (
 from tools import security
 from tools.dependencies import UserChecker, AccessTokenBearer
 from tools.exceptions import success_response, UserException
+
+import json
 
 access_token_bearer = AccessTokenBearer()
 
@@ -288,3 +291,22 @@ async def get_activity(
         data=AdminActivityOut(dates=[r["date"] for r in rows], uv=[r["uv"] for r in rows]),
         message="获取成功",
     )
+
+@router.get("/presets", response_model=Envelope[AdminAIOut])
+async def get_presets():
+    """
+    拿到预设的几个大模型信息
+    """
+    with open("ai_presets.json", "r", encoding="utf-8") as f:
+        data = json.load(f)
+    return success_response(
+        data=data,
+        message="获取成功",
+    )
+
+@router.put("/config")
+async def set_ai_config():
+    """
+    设置AI配置
+    """
+    pass
